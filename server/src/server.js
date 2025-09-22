@@ -3,6 +3,7 @@ const cors = require('cors')
 const helmet = require('helmet')
 const rateLimit = require('express-rate-limit')
 require('dotenv').config()
+const path = require('path')
 
 const connectDB = require('./config/database')
 const routes = require('./routes')
@@ -47,6 +48,14 @@ app.use('/uploads', express.static('uploads'))
 // API routes
 app.use('/api', routes)
 
+// Serve frontend
+const buildPath = path.join(__dirname, '../../client/dist')
+app.use(express.static(buildPath))
+app.get('*', (req, res) => {
+  res.sendFile(path.join(buildPath, 'index.html'))
+})
+
+
 // Swagger documentation
 swaggerDocs(app)
 
@@ -61,14 +70,6 @@ app.get('/health', (req, res) => {
 
 // Error handling middleware
 app.use(errorHandler)
-
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found'
-  })
-})
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

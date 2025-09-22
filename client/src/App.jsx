@@ -1,0 +1,173 @@
+import React from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { Layout, message } from 'antd'
+import { motion } from 'framer-motion'
+
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
+import LoadingSpinner from './components/LoadingSpinner'
+
+// Public Pages
+import Login from './pages/auth/Login'
+import AdminLogin from './pages/auth/AdminLogin'
+import Register from './pages/auth/Register'
+import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
+
+// User Pages
+import UserDashboard from './pages/user/Dashboard'
+import Courses from './pages/user/Courses'
+import CourseDetail from './pages/user/CourseDetail'
+import MCQQuiz from './pages/user/MCQQuiz'
+import AssignmentSubmission from './pages/user/AssignmentSubmission'
+import Certificates from './pages/user/Certificates'
+
+// Admin Pages
+import AdminDashboard from './pages/admin/Dashboard'
+import AdminCourses from './pages/admin/Courses'
+import CreateCourse from './pages/admin/CreateCourse'
+import EditCourse from './pages/admin/EditCourse'
+import UserProgress from './pages/admin/UserProgress'
+
+const { Content } = Layout
+
+// Configure message globally
+message.config({
+  top: 100,
+  duration: 3,
+  maxCount: 3,
+})
+
+function AppRoutes() {
+  const { loading } = useAuth()
+
+  if (loading) {
+    return <LoadingSpinner />
+  }
+
+  return (
+    <Layout className="min-h-screen">
+      <Content>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Login />} />
+            <Route path="/admin-login" element={<AdminLogin />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+
+            {/* User Protected Routes */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['user']}>
+                  <UserDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses"
+              element={
+                <ProtectedRoute allowedRoles={['user']}>
+                  <Courses />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:slug"
+              element={
+                <ProtectedRoute allowedRoles={['user']}>
+                  <CourseDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:slug/mcq"
+              element={
+                <ProtectedRoute allowedRoles={['user']}>
+                  <MCQQuiz />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:slug/assignment"
+              element={
+                <ProtectedRoute allowedRoles={['user']}>
+                  <AssignmentSubmission />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/certificates"
+              element={
+                <ProtectedRoute allowedRoles={['user']}>
+                  <Certificates />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Admin Protected Routes */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/courses"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminCourses />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/courses/new"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <CreateCourse />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/courses/:id/edit"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <EditCourse />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users/:id"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <UserProgress />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </motion.div>
+      </Content>
+    </Layout>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
+  )
+}
+
+export default App

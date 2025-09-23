@@ -1,23 +1,33 @@
 import React, { useState } from 'react'
 import { Form, Input, Button, Card, Typography } from 'antd'
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { useAuth } from '../../contexts/AuthContext'
+import { postApi } from '../../services/api'
+import { USER_REGISTER } from '../../utils/apiPath'
+import { message } from 'antd'
 
 const { Title, Text } = Typography
 
 const Register = () => {
   const [loading, setLoading] = useState(false)
-  const { register } = useAuth()
+  const navigate = useNavigate()
 
   const onFinish = async (values) => {
     setLoading(true)
+    const { confirmPassword, ...payload } = values
+    
     try {
-      const { confirmPassword, ...data } = values;
-      await register(data)
+      const response = await postApi(USER_REGISTER, payload)
+      if (response.statusCode === 201) {
+        message.success(response.message)
+        navigate('/')
+      } else {
+        message.error(response.message || 'Registration failed')
+      }
     } catch (error) {
-      // Error is handled in AuthContext
+      console.error('Registration failed:', error)
+      message.error(error.message || 'An error occurred during registration.')
     } finally {
       setLoading(false)
     }

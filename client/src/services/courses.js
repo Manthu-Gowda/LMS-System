@@ -1,19 +1,19 @@
-import api from './api'
+import { getApi, postApi, patchApi, deleteApi } from './api'
 
 export const getCourses = (params = {}) => {
-  return api.get('/courses', { params })
+  return getApi('/courses', params)
 }
 
 export const getCourseBySlug = (slug) => {
-  return api.get(`/courses/${slug}`)
+  return getApi(`/courses/${slug}`)
 }
 
 export const getCourseById = (id) => {
-  return api.get(`/courses/id/${id}`)
+  return getApi(`/courses/id/${id}`)
 }
 
 export const createCourse = (courseData) => {
-  return api.post('/courses', courseData, {
+  return postApi('/courses', courseData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -21,7 +21,7 @@ export const createCourse = (courseData) => {
 }
 
 export const updateCourse = (id, courseData) => {
-  return api.patch(`/courses/${id}`, courseData, {
+  return patchApi(`/courses/${id}`, courseData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -29,43 +29,47 @@ export const updateCourse = (id, courseData) => {
 }
 
 export const deleteCourse = (id) => {
-  return api.delete(`/courses/${id}`)
+  return deleteApi(`/courses/${id}`)
 }
 
 export const enrollInCourse = (courseId) => {
-  return api.post('/enrollments', { courseId })
+  return postApi('/enrollments', { courseId })
 }
 
 export const getMyEnrollments = () => {
-  return api.get('/enrollments/me')
+  return getApi('/enrollments/me')
 }
 
 export const updateProgress = (enrollmentId, progressData) => {
-  return api.patch(`/progress/${enrollmentId}`, progressData)
+  return patchApi(`/progress/${enrollmentId}`, progressData)
 }
 
 export const getMCQByCourseId = (courseId) => {
-  return api.get(`/courses/${courseId}/mcq`)
+  return getApi(`/courses/${courseId}/mcq`)
 }
 
 export const submitMCQ = (courseId, answers) => {
-  return api.post(`/courses/${courseId}/mcq/submit`, { answers })
+  return postApi(`/courses/${courseId}/mcq/submit`, { answers })
 }
 
-export const submitAssignment = (courseId, assignmentData) => {
-  return api.post(`/courses/${courseId}/assignment`, assignmentData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+export const submitAssignment = (courseSlug, assignmentData) => {
+  // First get course by slug to get ID
+  return getCourseBySlug(courseSlug).then(courseResponse => {
+    const courseId = courseResponse.data._id
+    return postApi(`/courses/${courseId}/assignment`, assignmentData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
   })
 }
 
 export const getMyCertificates = () => {
-  return api.get('/certificates/me')
+  return getApi('/certificates/me')
 }
 
 export const getCertificate = (id) => {
-  return api.get(`/certificates/${id}`, {
+  return getApi(`/certificates/${id}`, {
     responseType: 'blob',
   })
 }

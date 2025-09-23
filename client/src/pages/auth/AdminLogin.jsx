@@ -1,22 +1,48 @@
 import React, { useState } from 'react'
 import { Form, Input, Button, Card, Typography, Alert } from 'antd'
 import { LockOutlined, MailOutlined, CrownOutlined } from '@ant-design/icons'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../../contexts/AuthContext'
+import { postApi } from '../../services/api'
+import { USER_LOGIN } from '../../utils/apiPath'
+import { message } from 'antd'
 
 const { Title, Text } = Typography
 
 const AdminLogin = () => {
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
+  const navigate = useNavigate()
 
   const onFinish = async (values) => {
     setLoading(true)
+    const payload = {
+      email: values.email,
+      password: values.password,
+      loginType: 1 // Admin login
+    }
+    
     try {
-      await login(values.email, values.password, 1) // Admin login
+      const response = await postApi(USER_LOGIN, payload)
+      if (response.statusCode === 200) {
+        const { accessTokenResponseModel, user } = response.data
+        const loginData = {
+          accessToken: accessTokenResponseModel.accessToken,
+          refreshToken: accessTokenResponseModel.refreshToken || '',
+          expiryTime: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+          ...user
+        }
+        
+        login(loginData)
+        message.success(response.message)
+        navigate('/admin')
+      } else {
+        message.error(response.message || 'Login failed')
+      }
     } catch (error) {
-      // Error is handled in AuthContext
+      console.error('Admin login failed:', error)
+      message.error(error.message || 'An error occurred during login.')
     } finally {
       setLoading(false)
     }

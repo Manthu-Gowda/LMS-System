@@ -42,9 +42,11 @@ api.interceptors.response.use(
   }
 )
 
+// API methods
 export const getApi = (url, params) => api.get(url, { params })
 export const postApi = (url, data) => api.post(url, data)
 export const putApi = (url, data) => api.put(url, data)
 export const deleteApi = (url) => api.delete(url)
+export const patchApi = (url, data) => api.patch(url, data)
 
 export default api

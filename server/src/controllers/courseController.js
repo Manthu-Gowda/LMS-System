@@ -36,15 +36,7 @@ exports.getAllCourses = async (req, res) => {
 
     const total = await Course.countDocuments(query)
 
-    res.status(200).json({
-      data: courses,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
-      }
-    })
+    res.status(200).json(courses) // Return courses directly for frontend compatibility
   } catch (error) {
     logger.error('Get courses error:', error)
     res.status(500).json({ message: 'Internal server error' })
@@ -56,11 +48,23 @@ exports.getCourseBySlug = async (req, res) => {
   try {
     const { slug } = req.params
 
-    const course = await Course.findOne({ slug, isPublished: true })
+    const course = await Course.findOne({ slug })
       .populate('createdBy', 'name email')
 
     if (!course) {
       return res.status(404).json({ message: 'Course not found' })
+    }
+
+    // Check if user is enrolled (for content access)
+    if (req.user) {
+      const enrollment = await Enrollment.findOne({ 
+        user: req.user.userId, 
+        course: course._id 
+      })
+      
+      if (!enrollment && !course.isPublished) {
+        return res.status(403).json({ message: 'Course not available' })
+      }
     }
 
     res.status(200).json({ data: course })
@@ -70,22 +74,50 @@ exports.getCourseBySlug = async (req, res) => {
   }
 }
 
+// Get course by ID (Admin only)
+exports.getCourseById = async (req, res) => {
+  try {
+    const { id } = req.params
+
+    const course = await Course.findById(id)
+      .populate('createdBy', 'name email')
+
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' })
+    }
+
+    res.status(200).json(course)
+  } catch (error) {
+    logger.error('Get course by ID error:', error)
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
 // Create course (Admin only)
 exports.createCourse = async (req, res) => {
   try {
     const courseData = { ...req.body, createdBy: req.user.userId }
 
+    // Handle thumbnail upload
     if (req.files?.thumbnail) {
       courseData.thumbnail = `/uploads/${req.files.thumbnail[0].filename}`
     }
 
+    // Handle content with file uploads
     if (req.body.content) {
-      const content = JSON.parse(req.body.content)
+      let content
+      try {
+        content = typeof req.body.content === 'string' 
+          ? JSON.parse(req.body.content) 
+          : req.body.content
+      } catch (e) {
+        content = []
+      }
       
       content.forEach((item, index) => {
         if (item.type === 'video' || item.type === 'pdf') {
           const fileField = `content[${index}].file`
-          if (req.files[fileField]) {
+          if (req.files && req.files[fileField]) {
             item.url = `/uploads/${req.files[fileField][0].filename}`
           }
         }
@@ -94,12 +126,26 @@ exports.createCourse = async (req, res) => {
       courseData.content = content
     }
 
+    // Handle MCQ questions
     if (req.body.mcq) {
-      courseData.mcq = JSON.parse(req.body.mcq)
+      try {
+        courseData.mcq = typeof req.body.mcq === 'string' 
+          ? JSON.parse(req.body.mcq) 
+          : req.body.mcq
+      } catch (e) {
+        courseData.mcq = []
+      }
     }
 
+    // Handle tags
     if (req.body.tags) {
-      courseData.tags = JSON.parse(req.body.tags)
+      try {
+        courseData.tags = typeof req.body.tags === 'string' 
+          ? JSON.parse(req.body.tags) 
+          : req.body.tags
+      } catch (e) {
+        courseData.tags = []
+      }
     }
 
     const course = new Course(courseData)
@@ -130,7 +176,55 @@ exports.updateCourse = async (req, res) => {
       return res.status(404).json({ message: 'Course not found' })
     }
 
-    // ... (implementation similar to createCourse)
+    // Handle thumbnail upload
+    if (req.files?.thumbnail) {
+      updateData.thumbnail = `/uploads/${req.files.thumbnail[0].filename}`
+    }
+
+    // Handle content updates
+    if (req.body.content) {
+      let content
+      try {
+        content = typeof req.body.content === 'string' 
+          ? JSON.parse(req.body.content) 
+          : req.body.content
+      } catch (e) {
+        content = course.content || []
+      }
+      
+      content.forEach((item, index) => {
+        if (item.type === 'video' || item.type === 'pdf') {
+          const fileField = `content[${index}].file`
+          if (req.files && req.files[fileField]) {
+            item.url = `/uploads/${req.files[fileField][0].filename}`
+          }
+        }
+      })
+      
+      updateData.content = content
+    }
+
+    // Handle MCQ updates
+    if (req.body.mcq) {
+      try {
+        updateData.mcq = typeof req.body.mcq === 'string' 
+          ? JSON.parse(req.body.mcq) 
+          : req.body.mcq
+      } catch (e) {
+        updateData.mcq = course.mcq || []
+      }
+    }
+
+    // Handle tags updates
+    if (req.body.tags) {
+      try {
+        updateData.tags = typeof req.body.tags === 'string' 
+          ? JSON.parse(req.body.tags) 
+          : req.body.tags
+      } catch (e) {
+        updateData.tags = course.tags || []
+      }
+    }
 
     const updatedCourse = await Course.findByIdAndUpdate(id, updateData, { new: true })
       .populate('createdBy', 'name email')
@@ -283,6 +377,7 @@ exports.submitAssignment = async (req, res) => {
     enrollment.assignment = assignmentData
     await enrollment.save()
 
+    // Check if certificate should be generated
     if (enrollment.checkCompletionRequirements() && !enrollment.certificateId) {
       try {
         const certificate = await certificateService.generateCertificate(enrollment._id)

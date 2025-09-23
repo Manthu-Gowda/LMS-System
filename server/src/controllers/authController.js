@@ -6,12 +6,12 @@ const logger = require('../utils/logger');
 
 // Generate JWT token
 const generateToken = (user) => {
-    const payload = {
-        userId: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      };
+  const payload = {
+    userId: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+  };
   return jwt.sign(payload, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '1d'
   });
@@ -48,7 +48,14 @@ exports.signup = async (req, res) => {
       success: true,
       statusCode: 201,
       message: 'User registered successfully',
-      data: { user }
+      data: { 
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
+      }
     });
   } catch (error) {
     logger.error('Signup error:', error);
@@ -63,11 +70,10 @@ exports.signup = async (req, res) => {
 // Login
 exports.login = async (req, res) => {
   try {
-    const { email, userName, password, loginType } = req.body;
-    const loginIdentifier = email || userName;
+    const { email, password, loginType } = req.body;
 
     // Find user
-    const user = await User.findOne({ email: loginIdentifier });
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -110,7 +116,7 @@ exports.login = async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
-    logger.info(`User logged in: ${loginIdentifier}`);
+    logger.info(`User logged in: ${email}`);
 
     res.status(200).json({
       success: true,
@@ -118,7 +124,8 @@ exports.login = async (req, res) => {
       message: 'Login successful',
       data: {
         accessTokenResponseModel: {
-          accessToken: token
+          accessToken: token,
+          refreshToken: token // Using same token for simplicity
         },
         user: {
           id: user._id,
@@ -145,4 +152,103 @@ exports.logout = async (req, res) => {
     statusCode: 200,
     message: 'Logout successful' 
   });
+};
+
+// Forgot Password
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: 'User not found'
+      });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    await user.save();
+
+    // Create reset URL
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+
+    try {
+      await emailService.sendPasswordResetEmail(user.email, user.name, resetUrl);
+      
+      res.status(200).json({
+        success: true,
+        statusCode: 200,
+        message: 'Password reset email sent'
+      });
+    } catch (emailError) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+
+      logger.error('Email send error:', emailError);
+      res.status(500).json({
+        success: false,
+        statusCode: 500,
+        message: 'Email could not be sent'
+      });
+    }
+  } catch (error) {
+    logger.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Reset Password
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    // Get hashed token
+    const resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: 'Token is invalid or has expired'
+      });
+    }
+
+    // Set new password
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    logger.info(`Password reset successful for user: ${user.email}`);
+
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: 'Password reset successful'
+    });
+  } catch (error) {
+    logger.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: 'Internal server error'
+    });
+  }
 };

@@ -13,248 +13,69 @@ const router = express.Router()
  *   description: Course management endpoints
  */
 
-/**
- * @swagger
- * /courses:
- *   get:
- *     summary: Get all courses
- *     tags: [Courses]
- *     parameters:
- *       - in: query
- *         name: isPublished
- *         schema:
- *           type: boolean
- *         description: Filter by published status
- *       - in: query
- *         name: difficulty
- *         schema:
- *           type: string
- *           enum: [beginner, intermediate, advanced]
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Courses retrieved successfully
- */
+// Get all courses (public for browsing, but enrollment requires auth)
 router.get('/', courseController.getAllCourses)
 
-/**
- * @swagger
- * /courses:
- *   post:
- *     summary: Create new course (Admin only)
- *     tags: [Courses]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - title
- *               - shortDescription
- *               - description
- *               - difficulty
- *             properties:
- *               title:
- *                 type: string
- *               shortDescription:
- *                 type: string
- *               description:
- *                 type: string
- *               difficulty:
- *                 type: string
- *                 enum: [beginner, intermediate, advanced]
- *               thumbnail:
- *                 type: string
- *                 format: binary
- *     responses:
- *       201:
- *         description: Course created successfully
- *       403:
- *         description: Access denied
- */
+// Create new course (Admin only)
 router.post('/', 
   auth, 
   authorize(['admin']), 
   upload.fields([
     { name: 'thumbnail', maxCount: 1 },
-    { name: 'content', maxCount: 20 }
+    { name: 'content[0].file', maxCount: 1 },
+    { name: 'content[1].file', maxCount: 1 },
+    { name: 'content[2].file', maxCount: 1 },
+    { name: 'content[3].file', maxCount: 1 },
+    { name: 'content[4].file', maxCount: 1 },
+    { name: 'content[5].file', maxCount: 1 },
+    { name: 'content[6].file', maxCount: 1 },
+    { name: 'content[7].file', maxCount: 1 },
+    { name: 'content[8].file', maxCount: 1 },
+    { name: 'content[9].file', maxCount: 1 }
   ]), 
-  validateCourse, 
   courseController.createCourse
 )
 
-/**
- * @swagger
- * /courses/{slug}:
- *   get:
- *     summary: Get course by slug
- *     tags: [Courses]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: slug
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Course retrieved successfully
- *       404:
- *         description: Course not found
- */
+// Get course by slug (requires auth for enrolled users)
 router.get('/:slug', auth, courseController.getCourseBySlug)
 
-/**
- * @swagger
- * /courses/{id}/mcq:
- *   get:
- *     summary: Get MCQ questions for course
- *     tags: [Courses]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: MCQ questions retrieved successfully
- *       403:
- *         description: Not enrolled in course
- */
+// Get course by ID (for admin)
+router.get('/id/:id', auth, authorize(['admin']), courseController.getCourseById)
+
+// Get MCQ questions for course
 router.get('/:id/mcq', auth, courseController.getMCQByCourseId)
 
-/**
- * @swagger
- * /courses/{id}/mcq/submit:
- *   post:
- *     summary: Submit MCQ answers
- *     tags: [Courses]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               answers:
- *                 type: object
- *     responses:
- *       200:
- *         description: MCQ submitted successfully
- *       400:
- *         description: Invalid submission
- */
+// Submit MCQ answers
 router.post('/:id/mcq/submit', auth, courseController.submitMCQ)
 
-/**
- * @swagger
- * /courses/{id}/assignment:
- *   post:
- *     summary: Submit assignment
- *     tags: [Courses]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               link:
- *                 type: string
- *               description:
- *                 type: string
- *               file:
- *                 type: string
- *                 format: binary
- *     responses:
- *       200:
- *         description: Assignment submitted successfully
- *       400:
- *         description: Invalid submission
- */
+// Submit assignment
 router.post('/:id/assignment', 
   auth, 
   upload.single('file'), 
   courseController.submitAssignment
 )
 
-/**
- * @swagger
- * /courses/{id}:
- *   patch:
- *     summary: Update course (Admin only)
- *     tags: [Courses]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Course updated successfully
- *       403:
- *         description: Access denied
- */
+// Update course (Admin only)
 router.patch('/:id', 
   auth, 
   authorize(['admin']), 
   upload.fields([
     { name: 'thumbnail', maxCount: 1 },
-    { name: 'content', maxCount: 20 }
+    { name: 'content[0].file', maxCount: 1 },
+    { name: 'content[1].file', maxCount: 1 },
+    { name: 'content[2].file', maxCount: 1 },
+    { name: 'content[3].file', maxCount: 1 },
+    { name: 'content[4].file', maxCount: 1 },
+    { name: 'content[5].file', maxCount: 1 },
+    { name: 'content[6].file', maxCount: 1 },
+    { name: 'content[7].file', maxCount: 1 },
+    { name: 'content[8].file', maxCount: 1 },
+    { name: 'content[9].file', maxCount: 1 }
   ]), 
-  validateCourse, 
   courseController.updateCourse
 )
 
-/**
- * @swagger
- * /courses/{id}:
- *   delete:
- *     summary: Delete course (Admin only)
- *     tags: [Courses]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Course deleted successfully
- *       403:
- *         description: Access denied
- */
+// Delete course (Admin only)
 router.delete('/:id', auth, authorize(['admin']), courseController.deleteCourse)
 
 module.exports = router

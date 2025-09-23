@@ -80,6 +80,38 @@ code {
   height: 100%;
 }
 
+/* Fix for login card width */
+.ant-card {
+  width: 100%;
+}
+
+/* Ensure proper centering for auth pages */
+.min-h-screen {
+  min-height: 100vh;
+}
+
+/* Text truncation utilities */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 @media (max-width: 768px) {
   .content-wrapper {
     padding: 0 16px;

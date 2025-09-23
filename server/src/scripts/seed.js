@@ -22,7 +22,7 @@ const seedAdmin = async () => {
     const existingAdmin = await User.findOne({ email: 'lmsadmin@yopmail.com' })
     if (existingAdmin) {
       logger.info('Admin user already exists')
-      return
+      return existingAdmin
     }
 
     // Create admin user
@@ -37,8 +37,38 @@ const seedAdmin = async () => {
     logger.info('Admin user created successfully')
     logger.info('Email: lmsadmin@yopmail.com')
     logger.info('Password: Password@123')
+    return adminUser
   } catch (error) {
     logger.error('Error creating admin user:', error)
+    throw error
+  }
+}
+
+const seedTestUser = async () => {
+  try {
+    // Check if test user already exists
+    const existingUser = await User.findOne({ email: 'student@example.com' })
+    if (existingUser) {
+      logger.info('Test user already exists')
+      return existingUser
+    }
+
+    // Create test user
+    const testUser = new User({
+      name: 'Test Student',
+      email: 'student@example.com',
+      password: 'password123',
+      role: 'user'
+    })
+
+    await testUser.save()
+    logger.info('Test user created successfully')
+    logger.info('Email: student@example.com')
+    logger.info('Password: password123')
+    return testUser
+  } catch (error) {
+    logger.error('Error creating test user:', error)
+    throw error
   }
 }
 
@@ -326,9 +356,15 @@ const seedDatabase = async () => {
     logger.info('Starting database seeding...')
     
     await seedAdmin()
+    await seedTestUser()
     await seedSampleCourses()
     
     logger.info('Database seeding completed successfully!')
+    logger.info('='.repeat(50))
+    logger.info('LOGIN CREDENTIALS:')
+    logger.info('Admin - Email: lmsadmin@yopmail.com | Password: Password@123')
+    logger.info('Student - Email: student@example.com | Password: password123')
+    logger.info('='.repeat(50))
     
     process.exit(0)
   } catch (error) {

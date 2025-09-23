@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, Typography, Divider } from 'antd';
+import { Form, Input, Button, Card, Typography, Divider, Alert } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -20,35 +20,33 @@ const Login = () => {
     const payload = {
       email: values.email,
       password: values.password,
+      loginType: 2 // User login
     };
+    
     try {
-      const { statusCode, data, message: msg } = await postApi(USER_LOGIN, payload);
-      if (statusCode === 200) {
-        const { accessToken, refreshToken, expiryTime, ...userData } = data;
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
-        localStorage.setItem('expiryTime', expiryTime);
-        localStorage.setItem('user', JSON.stringify(userData));
-        login(data);
-        successToast(msg);
+      const response = await postApi(USER_LOGIN, payload);
+      if (response.statusCode === 200) {
+        const { accessTokenResponseModel, user } = response.data;
+        const loginData = {
+          accessToken: accessTokenResponseModel.accessToken,
+          refreshToken: accessTokenResponseModel.refreshToken || '',
+          expiryTime: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+          ...user
+        };
+        
+        login(loginData);
+        message.success(response.message);
         navigate('/dashboard');
       } else {
-        errorToast(msg);
+        message.error(response.message || 'Login failed');
       }
     } catch (error) {
       console.error('Login failed:', error);
-      errorToast('An error occurred during login.');
+      message.error(error.message || 'An error occurred during login.');
     } finally {
       setLoading(false);
     }
   };
-  const successToast = (msg) => {
-    message.success(msg);
-  }
-  const errorToast = (msg) => {
-    message.error(msg);
-  }
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
@@ -75,6 +73,14 @@ const Login = () => {
               Sign in to your account to continue learning
             </Text>
           </div>
+
+          <Alert
+            message="Demo Credentials"
+            description="Email: student@example.com | Password: password123"
+            type="info"
+            showIcon
+            className="mb-6"
+          />
 
           <Form
             name="login"

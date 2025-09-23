@@ -1,160 +1,88 @@
-import React, { useState } from 'react'
-import { Form, Input, Button, Card, Typography } from 'antd'
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons'
-import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { postApi } from '../../utils/apiServices'
-import { USER_REGISTER } from '../../utils/apiPaths'
-import { message } from 'antd'
+import React, { useState } from 'react';
+import { Form, Button, Card, Typography, message as antdMessage } from 'antd';
+import { Link, useNavigate } from 'react-router-dom';
+import { postApi } from '../../utils/apiServices';
+import { USER_REGISTER } from '../../utils/apiPaths';
+import AuthLayout from '../../components/Layout/AuthLayout';
+import FormInputs from '../../components/UI/FormInputs';
 
-const { Title, Text } = Typography
+const { Title, Text } = Typography;
 
 const Register = () => {
-  const [loading, setLoading] = useState(false)
-  const navigate = useNavigate()
+    const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
 
-  const onFinish = async (values) => {
-    setLoading(true)
-    const { confirmPassword, ...payload } = values
-    
-    try {
-      const response = await postApi(USER_REGISTER, payload)
-      if (response.success) {
-        message.success(response.message)
-        navigate('/')
-      } else {
-        message.error(response.message || 'Registration failed')
-      }
-    } catch (error) {
-      console.error('Registration failed:', error)
-      message.error(error.message || 'An error occurred during registration.')
-    } finally {
-      setLoading(false)
-    }
-  }
+    const onFinish = async (values) => {
+        setLoading(true);
+        const { confirmPassword, ...payload } = values;
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 flex items-center justify-center px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
-        <Card className="shadow-xl">
-          <div className="text-center mb-8">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: 'spring', stiffness: 300 }}
-              className="inline-block p-4 bg-green-100 rounded-full mb-4"
-            >
-              <UserOutlined className="text-3xl text-green-600" />
-            </motion.div>
-            <Title level={2} className="mb-2">
-              Join LMS
-            </Title>
-            <Text type="secondary">
-              Create your account to start learning
-            </Text>
-          </div>
+        try {
+            const response = await postApi(USER_REGISTER, payload);
+            const { statusCode, message } = response;
+            if (statusCode === 201) {
+                antdMessage.success(message);
+                navigate('/');
+            } else {
+                antdMessage.error(message || 'Registration failed');
+            }
+        } catch (error) {
+            console.error('Registration failed:', error);
+            antdMessage.error(error.response?.data?.message || error.message || 'An error occurred during registration.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-          <Form
-            name="register"
-            onFinish={onFinish}
-            layout="vertical"
-            size="large"
-            autoComplete="off"
-          >
-            <Form.Item
-              name="name"
-              label="Full Name"
-              rules={[
-                { required: true, message: 'Please input your full name!' },
-                { min: 2, message: 'Name must be at least 2 characters!' },
-              ]}
-            >
-              <Input
-                prefix={<UserOutlined />}
-                placeholder="Enter your full name"
-              />
-            </Form.Item>
+    return (
+        <AuthLayout>
+            <Card className="shadow-xl">
+                <div className="text-center mb-8">
+                    <Title level={2} className="text-white">Create Your Account</Title>
+                    <Text className="text-gray-300">Join us and start your learning journey!</Text>
+                </div>
 
-            <Form.Item
-              name="email"
-              label="Email"
-              rules={[
-                { required: true, message: 'Please input your email!' },
-                { type: 'email', message: 'Please enter a valid email!' },
-              ]}
-            >
-              <Input
-                prefix={<MailOutlined />}
-                placeholder="Enter your email"
-              />
-            </Form.Item>
+                <Form name="register" onFinish={onFinish} layout="vertical" size="large" autoComplete="off">
+                    <FormInputs
+                        name="name"
+                        title="Full Name"
+                        rules={[{ required: true, message: 'Please input your full name!' }]}
+                        placeholder="Enter your full name"
+                    />
+                    <FormInputs
+                        name="email"
+                        title="Email"
+                        rules={[{ required: true, message: 'Please input your email!' }, { type: 'email', message: 'A valid email is required!' }]}
+                        placeholder="Enter your email"
+                    />
+                    <FormInputs
+                        name="password"
+                        title="Password"
+                        type="password"
+                        rules={[{ required: true, message: 'Please input a password!' }, { min: 6, message: 'Password must be at least 6 characters!' }]}
+                        placeholder="Create a password"
+                    />
+                    <FormInputs
+                        name="confirmPassword"
+                        title="Confirm Password"
+                        type="password"
+                        dependencies={['password']}
+                        rules={[{ required: true, message: 'Please confirm your password!' }, ({ getFieldValue }) => ({ validator(_, value) { if (!value || getFieldValue('password') === value) return Promise.resolve(); return Promise.reject(new Error('Passwords do not match!')); } })]}
+                        placeholder="Confirm your password"
+                    />
+                    <Form.Item>
+                        <Button type="primary" htmlType="submit" loading={loading} block className="h-12 text-lg">Create Account</Button>
+                    </Form.Item>
+                </Form>
 
-            <Form.Item
-              name="password"
-              label="Password"
-              rules={[
-                { required: true, message: 'Please input your password!' },
-                { min: 6, message: 'Password must be at least 6 characters!' },
-              ]}
-            >
-              <Input.Password
-                prefix={<LockOutlined />}
-                placeholder="Enter your password"
-              />
-            </Form.Item>
+                <div className="text-center">
+                    <Text className="text-gray-300">
+                        Already have an account?{' '}
+                        <Link to="/" className="font-medium text-blue-400 hover:text-blue-300">Sign in</Link>
+                    </Text>
+                </div>
+            </Card>
+        </AuthLayout>
+    );
+};
 
-            <Form.Item
-              name="confirmPassword"
-              label="Confirm Password"
-              dependencies={['password']}
-              rules={[
-                { required: true, message: 'Please confirm your password!' },
-                ({ getFieldValue }) => ({
-                  validator(_, value) {
-                    if (!value || getFieldValue('password') === value) {
-                      return Promise.resolve()
-                    }
-                    return Promise.reject(new Error('Passwords do not match!'))
-                  },
-                }),
-              ]}
-            >
-              <Input.Password
-                prefix={<LockOutlined />}
-                placeholder="Confirm your password"
-              />
-            </Form.Item>
-
-            <Form.Item>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={loading}
-                block
-                className="h-12"
-              >
-                Create Account
-              </Button>
-            </Form.Item>
-          </Form>
-
-          <div className="text-center">
-            <Text>
-              Already have an account?{' '}
-              <Link to="/" className="text-blue-600 hover:text-blue-800 font-medium">
-                Sign in here
-              </Link>
-            </Text>
-          </div>
-        </Card>
-      </motion.div>
-    </div>
-  )
-}
-
-export default Register
+export default Register;

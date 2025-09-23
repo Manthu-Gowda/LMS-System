@@ -1,153 +1,185 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Form, Input, Button, Card, Select, Row, Col, Upload, message, Space, InputNumber } from 'antd';
-import { PlusOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { Form, Button, Card, Row, Col, Space, message as antdMessage } from 'antd';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import AdminLayout from '../../components/Layout/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getApi, postApi, putApi } from '../../utils/apiServices';
 import { GET_COURSE_BY_ID, CREATE_COURSE, UPDATE_COURSE } from '../../utils/apiPaths';
-
-const { Option } = Select;
-const { TextArea } = Input;
+import FormInputs from '../../components/UI/FormInputs';
+import SelectInput from '../../components/UI/SelectInput';
+import TextField from '../../components/UI/TextField';
+import UploadInput from '../../components/UI/UploadInput';
 
 const CourseForm = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [form] = Form.useForm();
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [form] = Form.useForm();
+    const [isLoading, setIsLoading] = useState(!!id);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: courseData, isLoading } = useQuery(
-    ['admin-course', id],
-    () => getApi(`${GET_COURSE_BY_ID}/${id}`),
-    { enabled: !!id }
-  );
+    useEffect(() => {
+        const fetchCourse = async () => {
+            if (id) {
+                try {
+                    const response = await getApi(`${GET_COURSE_BY_ID}/${id}`);
+                    if (response.data) {
+                        form.setFieldsValue(response.data);
+                    }
+                } catch (error) {
+                    antdMessage.error('Failed to fetch course data.');
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+        };
+        fetchCourse();
+    }, [id, form]);
 
-  const mutation = useMutation(
-    (data) => id ? putApi(`${UPDATE_COURSE}/${id}`, data) : postApi(CREATE_COURSE, data),
-    {
-      onSuccess: () => {
-        message.success(`Course ${id ? 'updated' : 'created'} successfully!`);
-        queryClient.invalidateQueries('admin-courses');
-        navigate('/admin/courses');
-      },
-      onError: (err) => message.error(err.message),
-    }
-  );
+    const onFinish = async (values) => {
+        const formData = new FormData();
+        Object.keys(values).forEach((key) => {
+            if (key === 'content') {
+                formData.append(key, JSON.stringify(values[key]));
+            } else {
+                formData.append(key, values[key]);
+            }
+        });
 
-  useEffect(() => {
-    if (courseData) {
-      form.setFieldsValue(courseData.data);
-    }
-  }, [courseData, form]);
+        setIsSubmitting(true);
+        try {
+            const response = id
+                ? await putApi(`${UPDATE_COURSE}/${id}`, formData)
+                : await postApi(CREATE_COURSE, formData);
 
-  if (isLoading) return <LoadingSpinner />;
+            if (response.statusCode === 200 || response.statusCode === 201) {
+                antdMessage.success(response.message || `Course ${id ? 'updated' : 'created'} successfully!`);
+                navigate('/admin/courses');
+            } else {
+                antdMessage.error(response.message || 'An error occurred.');
+            }
+        } catch (err) {
+            antdMessage.error(err.response?.data?.message || err.message || 'An error occurred.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
-  const onFinish = (values) => {
-    const formData = new FormData();
-    Object.keys(values).forEach(key => {
-      if (key === 'content') {
-        formData.append(key, JSON.stringify(values[key]));
-      } else {
-        formData.append(key, values[key]);
-      }
-    });
-    // Handle file uploads for content
-    mutation.mutate(formData);
-  };
+    const handleTitleChange = (e) => {
+        const title = e.target.value;
+        const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+        form.setFieldsValue({ slug });
+    };
 
-  return (
-    <AdminLayout>
-      <Card title={id ? 'Edit Course' : 'Create Course'}>
-        <Form form={form} layout="vertical" onFinish={onFinish}>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item name="title" label="Title" rules={[{ required: true }]}>
-                <Input />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="slug" label="Slug" rules={[{ required: true }]}>
-                <Input />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item name="shortDescription" label="Short Description">
-            <TextArea rows={2} />
-          </Form.Item>
-          <Form.Item name="description" label="Description">
-            <TextArea rows={4} />
-          </Form.Item>
-          <Row gutter={24}>
-            <Col span={8}>
-              <Form.Item name="difficulty" label="Difficulty">
-                <Select>
-                  <Option value="beginner">Beginner</Option>
-                  <Option value="intermediate">Intermediate</Option>
-                  <Option value="advanced">Advanced</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item name="estimatedDuration" label="Estimated Duration">
-                <Input />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item name="isPublished" label="Status">
-                <Select>
-                  <Option value={true}>Published</Option>
-                  <Option value={false}>Draft</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item name="tags" label="Tags">
-            <Select mode="tags" tokenSeparators={[',']} />
-          </Form.Item>
-          
-          <Card title="Course Content">
-            <Form.List name="content">
-              {(fields, { add, remove }) => (
-                <>
-                  {fields.map(({ key, name, ...restField }) => (
-                    <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-                      <Form.Item {...restField} name={[name, 'type']} initialValue="video">
-                        <Select style={{ width: 120 }}>
-                          <Option value="video">Video</Option>
-                          <Option value="text">Text</Option>
-                          <Option value="pdf">PDF</Option>
-                          <Option value="youtube">YouTube</Option>
-                        </Select>
-                      </Form.Item>
-                      <Form.Item {...restField} name={[name, 'title']} rules={[{ required: true }]}>
-                        <Input placeholder="Content Title" />
-                      </Form.Item>
-                      <Form.Item {...restField} name={[name, 'url']}>
-                        <Upload><Button icon={<UploadOutlined/>}>Upload</Button></Upload>
-                      </Form.Item>
-                      <DeleteOutlined onClick={() => remove(name)} />
-                    </Space>
-                  ))}
-                  <Form.Item>
-                    <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
-                      Add Content
-                    </Button>
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
-          </Card>
+    if (isLoading) return <LoadingSpinner />;
 
-          <Form.Item className="mt-6">
-            <Button type="primary" htmlType="submit" loading={mutation.isLoading}>
-              {id ? 'Update' : 'Create'} Course
-            </Button>
-          </Form.Item>
-        </Form>
-      </Card>
-    </AdminLayout>
-  );
+    return (
+        <AdminLayout>
+            <Card title={id ? 'Edit Course' : 'Create Course'}>
+                <Form form={form} layout="vertical" onFinish={onFinish}>
+                    <Row gutter={24}>
+                        <Col span={12}>
+                            <FormInputs
+                                name="title"
+                                title="Title"
+                                rules={[{ required: true, message: 'Title is required' }]}
+                                placeholder="Enter the course title"
+                                onChange={handleTitleChange}
+                            />
+                        </Col>
+                        <Col span={12}>
+                            <FormInputs
+                                name="slug"
+                                title="Slug"
+                                rules={[{ required: true, message: 'Slug is required' }]}
+                                placeholder="Enter the course slug"
+                                disabled
+                            />
+                        </Col>
+                    </Row>
+                    <TextField
+                        name="shortDescription"
+                        title="Short Description"
+                        rows={2}
+                    />
+                    <TextField name="description" title="Description" rows={4} />
+                    <Row gutter={24}>
+                        <Col span={8}>
+                            <SelectInput
+                                name="difficulty"
+                                title="Difficulty"
+                                options={[
+                                    { value: 'beginner', label: 'Beginner' },
+                                    { value: 'intermediate', label: 'Intermediate' },
+                                    { value: 'advanced', label: 'Advanced' },
+                                ]}
+                            />
+                        </Col>
+                        <Col span={8}>
+                            <FormInputs
+                                name="estimatedDuration"
+                                title="Estimated Duration"
+                                placeholder="e.g., 8 hours"
+                            />
+                        </Col>
+                        <Col span={8}>
+                            <SelectInput
+                                name="isPublished"
+                                title="Status"
+                                options={[
+                                    { value: true, label: 'Published' },
+                                    { value: false, label: 'Draft' },
+                                ]}
+                            />
+                        </Col>
+                    </Row>
+                    <SelectInput name="tags" title="Tags" mode="tags" tokenSeparators={[',']} />
+
+                    <Card title="Course Content">
+                        <Form.List name="content">
+                            {(fields, { add, remove }) => (
+                                <>
+                                    {fields.map(({ key, name, ...restField }) => (
+                                        <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                                            <SelectInput
+                                                {...restField}
+                                                name={[name, 'type']}
+                                                initialValue="video"
+                                                options={[
+                                                    { value: 'video', label: 'Video' },
+                                                    { value: 'text', label: 'Text' },
+                                                    { value: 'pdf', label: 'PDF' },
+                                                    { value: 'youtube', label: 'YouTube' },
+                                                ]}
+                                            />
+                                            <FormInputs
+                                                {...restField}
+                                                name={[name, 'title']}
+                                                rules={[{ required: true, message: 'Content title is required' }]}
+                                                placeholder="Content Title"
+                                            />
+                                            <UploadInput {...restField} name={[name, 'url']} />
+                                            <DeleteOutlined onClick={() => remove(name)} />
+                                        </Space>
+                                    ))}
+                                    <Form.Item>
+                                        <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                                            Add Content
+                                        </Button>
+                                    </Form.Item>
+                                </>)}
+                        </Form.List>
+                    </Card>
+
+                    <Form.Item className="mt-6">
+                        <Button type="primary" htmlType="submit" loading={isSubmitting}>
+                            {id ? 'Update' : 'Create'} Course
+                        </Button>
+                    </Form.Item>
+                </Form>
+            </Card>
+        </AdminLayout>
+    );
 };
 
 export default CourseForm;

@@ -1,8 +1,8 @@
-import React from 'react';
-import { Card, Button, Typography, Empty, Row, Col, message } from 'antd';
-import { DownloadOutlined, TrophyOutlined, EyeOutlined, ShareAltOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import { Card, Button, Typography, Empty, Row, Col, message, Tooltip } from 'antd';
+import { DownloadOutlined, TrophyOutlined, EyeOutlined, ShareAltOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
-import { useQuery } from 'react-query';
+import { useNavigate } from 'react-router-dom';
 import UserLayout from '../../components/Layout/UserLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getApi } from '../../utils/apiServices';
@@ -11,125 +11,103 @@ import { GET_MY_CERTIFICATES, GET_CERTIFICATE } from '../../utils/apiPaths';
 const { Title, Text } = Typography;
 
 const Certificates = () => {
-  const { data: certificatesData, isLoading } = useQuery(
-    'my-certificates',
-    () => getApi(GET_MY_CERTIFICATES)
-  );
+  const navigate = useNavigate();
+  const [certificates, setCertificates] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCertificates = async () => {
+      try {
+        const response = await getApi(GET_MY_CERTIFICATES);
+        setCertificates(response.data || []);
+      } catch (error) {
+        message.error('Failed to fetch certificates');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCertificates();
+  }, []);
 
   const handleAction = async (action, certificateId) => {
     try {
-      const response = await getApi(`${GET_CERTIFICATE}/${certificateId}/download`);
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      
+      const response = await getApi(`${GET_CERTIFICATE}/${certificateId}/download`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
       if (action === 'download') {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `certificate-${certificateId}.pdf`;
-        a.click();
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `certificate-${certificateId}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
       } else if (action === 'view') {
         window.open(url, '_blank');
       }
-
       window.URL.revokeObjectURL(url);
     } catch (error) {
       message.error(`Action failed: ${error.message}`);
     }
   };
 
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-
-  const certificates = certificatesData?.data || [];
+  if (isLoading) return <LoadingSpinner />;
 
   return (
     <UserLayout>
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <TrophyOutlined className="text-6xl text-yellow-500 mb-4" />
-          <Title level={1}>Your Achievements</Title>
-          <Text className="text-lg text-gray-500">
-            A collection of all your hard-earned certificates.
-          </Text>
-        </motion.div>
-
-        {certificates.length > 0 ? (
-          <Row gutter={[24, 24]}>
-            {certificates.map((cert, i) => (
-              <Col xs={24} md={12} key={cert._id}>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                >
-                  <Card className="shadow-lg border-0 h-full flex flex-col">
-                    <div className="p-6 flex-grow">
-                      <Row align="middle" gutter={16}>
-                        <Col span={6} className="text-center">
-                          <TrophyOutlined className="text-5xl text-yellow-500" />
-                        </Col>
-                        <Col span={18}>
-                          <Text className="text-xs text-gray-500">Certificate of Completion</Text>
-                          <Title level={4} className="mt-0 mb-2 truncate">{cert.course.title}</Title>
-                          <Text className="text-sm text-gray-600">
-                            Issued on {new Date(cert.issuedAt).toLocaleDateString()}
-                          </Text>
-                        </Col>
-                      </Row>
-                    </div>
-                    <div className="bg-gray-50 p-4 flex justify-around border-t">
-                      <Button
-                        type="text"
-                        icon={<EyeOutlined />}
-                        onClick={() => handleAction('view', cert._id)}
-                      >
-                        View
-                      </Button>
-                      <Button
-                        type="text"
-                        icon={<DownloadOutlined />}
-                        onClick={() => handleAction('download', cert._id)}
-                      >
-                        Download
-                      </Button>
-                      <Button type="text" icon={<ShareAltOutlined />}>
-                        Share
-                      </Button>
-                    </div>
-                  </Card>
-                </motion.div>
-              </Col>
-            ))}
-          </Row>
-        ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <Card className="text-center py-20 shadow-sm border-0">
-              <Empty
-                image={<TrophyOutlined style={{ fontSize: 60, color: '#d9d9d9' }} />}
-                description={
-                  <div>
-                    <Title level={3} className="text-gray-700">
-                      No Certificates Yet
-                    </Title>
-                    <Text className="text-gray-500">
-                      Complete a course to earn your first certificate.
-                    </Text>
-                  </div>
-                }
-              >
-                <Button type="primary" size="large" href="/courses">
-                  Explore Courses
-                </Button>
-              </Empty>
-            </Card>
-          </motion.div>
-        )}
+      <div className="mb-8">
+        <Title level={2}>Your Achievements</Title>
+        <Text>Congratulations on your well-deserved success.</Text>
       </div>
+
+      {certificates.length > 0 ? (
+        <Row gutter={[24, 24]}>
+          {certificates.map((cert) => (
+            <Col xs={24} md={12} key={cert._id}>
+              <motion.div whileHover={{ translateY: -5 }}>
+                <Card className="shadow-lg border-0 overflow-hidden">
+                  <div className="p-5">
+                    <Row align="middle" gutter={16}>
+                      <Col>
+                        <TrophyOutlined style={{ fontSize: '48px', color: '#ffc107' }}/>
+                      </Col>
+                      <Col flex={1}>
+                        <Title level={5} className="mb-1" ellipsis>{cert.course.title}</Title>
+                        <Text type="secondary" className="text-sm">Issued on: {new Date(cert.issuedAt).toLocaleDateString()}</Text>
+                      </Col>
+                    </Row>
+                  </div>
+                  <div className="bg-gray-50 px-5 py-3 flex justify-end space-x-2">
+                    <Tooltip title="View Certificate">
+                      <Button icon={<EyeOutlined />} onClick={() => handleAction('view', cert._id)} />
+                    </Tooltip>
+                    <Tooltip title="Download">
+                      <Button icon={<DownloadOutlined />} onClick={() => handleAction('download', cert._id)} />
+                    </Tooltip>
+                    <Tooltip title="Share">
+                      <Button icon={<ShareAltOutlined />} onClick={() => message.info('Sharing feature coming soon!')} />
+                    </Tooltip>
+                  </div>
+                </Card>
+              </motion.div>
+            </Col>
+          ))}
+        </Row>
+      ) : (
+        <Card className="text-center py-20 shadow-lg border-0">
+            <Empty
+                image={<SafetyCertificateOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />}
+                description={
+                <>
+                    <Title level={4}>No Certificates to Show</Title>
+                    <Text>Your hard work pays off with certificates! Complete courses to see them here.</Text>
+                </>
+                }
+            >
+                <Button type="primary" size="large" onClick={() => navigate('/courses')}>
+                    Find a Course
+                </Button>
+            </Empty>
+        </Card>
+      )}
     </UserLayout>
   );
 };

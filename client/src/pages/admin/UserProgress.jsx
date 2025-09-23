@@ -1,10 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, Progress, Table, Typography, Tag, Space, Avatar, Row, Col } from 'antd';
 import { BookOutlined, MailOutlined, CalendarOutlined, CheckCircleOutlined, TrophyOutlined } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
-import { useQuery } from 'react-query';
 import AdminLayout from '../../components/Layout/AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getApi } from '../../utils/apiServices';
@@ -14,11 +13,22 @@ const { Title, Text } = Typography;
 
 const UserProgress = () => {
   const { id } = useParams();
+  const [progressData, setProgressData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: progressData, isLoading } = useQuery(
-    ['user-progress', id],
-    () => getApi(`${GET_USER_PROGRESS}/${id}`)
-  );
+  useEffect(() => {
+    const fetchUserProgress = async () => {
+      try {
+        const response = await getApi(`${GET_USER_PROGRESS}/${id}`);
+        setProgressData(response.data);
+      } catch (error) {
+        console.error("Failed to fetch user progress", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchUserProgress();
+  }, [id]);
 
   if (isLoading) return <LoadingSpinner />;
 
@@ -28,7 +38,7 @@ const UserProgress = () => {
     );
   }
 
-  const { user, enrollments } = progressData?.data;
+  const { user, enrollments } = progressData;
 
   const chartData = enrollments.map(e => ({ 
     name: e.course.title.slice(0, 15), 

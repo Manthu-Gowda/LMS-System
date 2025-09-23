@@ -1,106 +1,107 @@
-import React, { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Card, Radio, Button, Typography, Progress, Alert, message } from 'antd'
-import { ClockCircleOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
-import { motion } from 'framer-motion'
-import { useQuery, useMutation, useQueryClient } from 'react-query'
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Card, Radio, Button, Typography, Progress, Alert, message as antdMessage } from 'antd';
+import { ClockCircleOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { motion } from 'framer-motion';
 
-import UserLayout from '../../components/Layout/UserLayout'
-import LoadingSpinner from '../../components/LoadingSpinner'
-import { getApi, postApi } from '../../utils/apiServices'
-import { GET_COURSE_BY_ID, GET_MCQ_BY_COURSE_ID, SUBMIT_MCQ } from '../../utils/apiPaths'
+import UserLayout from '../../components/Layout/UserLayout';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { getApi, postApi } from '../../utils/apiServices';
+import { GET_COURSE_BY_ID, GET_MCQ_BY_COURSE_ID, SUBMIT_MCQ } from '../../utils/apiPaths';
 
-const { Title, Text } = Typography
+const { Title, Text } = Typography;
 
 const MCQQuiz = () => {
-  const { slug } = useParams()
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
+  const { slug } = useParams();
+  const navigate = useNavigate();
   
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [answers, setAnswers] = useState({})
-  const [submitted, setSubmitted] = useState(false)
-  const [results, setResults] = useState(null)
-  const [timeLeft, setTimeLeft] = useState(30 * 60) // 30 minutes
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const [results, setResults] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes
 
-  const { data: courseData, isLoading } = useQuery(
-    ['course', slug],
-    () => getApi(`${GET_COURSE_BY_ID}/${slug}`)
-  )
+  const [course, setCourse] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: mcqData, isLoading: mcqLoading } = useQuery(
-    ['mcq', courseData?.data?._id],
-    () => getApi(`${GET_MCQ_BY_COURSE_ID}/course/${courseData.data._id}`),
-    {
-      enabled: !!courseData?.data?._id,
-    }
-  )
-
-  const submitMutation = useMutation(
-    (answers) => postApi(`${SUBMIT_MCQ}/${courseData.data._id}/submit`, answers),
-    {
-      onSuccess: (response) => {
-        setResults(response.data)
-        setSubmitted(true)
-        queryClient.invalidateQueries('my-enrollments')
-        
-        if (response.data.score >= 70) {
-          message.success('Congratulations! You passed the quiz!')
-        } else {
-          message.warning('You need 70% to pass. You can retake the quiz.')
+  useEffect(() => {
+    const fetchCourseAndMcq = async () => {
+      try {
+        const courseResponse = await getApi(`${GET_COURSE_BY_ID}/${slug}`);
+        setCourse(courseResponse.data);
+        if (courseResponse.data) {
+          const mcqResponse = await getApi(`${GET_MCQ_BY_COURSE_ID}/course/${courseResponse.data._id}`);
+          setQuestions(mcqResponse.data || []);
         }
-      },
-      onError: (error) => {
-        message.error(error.message || 'Failed to submit quiz')
-      },
-    }
-  )
+      } catch (error) {
+        antdMessage.error('Failed to load quiz data.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCourseAndMcq();
+  }, [slug]);
 
-  // Timer effect
-  React.useEffect(() => {
+  useEffect(() => {
     if (timeLeft > 0 && !submitted) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000)
-      return () => clearTimeout(timer)
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      return () => clearTimeout(timer);
     } else if (timeLeft === 0 && !submitted) {
-      handleSubmit()
+      handleSubmit();
     }
-  }, [timeLeft, submitted])
+  }, [timeLeft, submitted]);
 
-  if (isLoading || mcqLoading) {
-    return <LoadingSpinner />
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      const response = await postApi(`${SUBMIT_MCQ}/${course._id}/submit`, { answers });
+      if (response.statusCode === 200) {
+        setResults(response.data);
+        setSubmitted(true);
+        if (response.data.score >= 70) {
+          antdMessage.success(response.message || 'Congratulations! You passed the quiz!');
+        } else {
+          antdMessage.warning(response.message || 'You need 70% to pass. You can retake the quiz.');
+        }
+      } else {
+        antdMessage.error(response.message || 'Failed to submit quiz.');
+      }
+    } catch (error) {
+      antdMessage.error(error.response?.data?.message || error.message || 'Failed to submit quiz');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isLoading) {
+    return <LoadingSpinner />;
   }
 
-  if (!courseData?.data || !mcqData?.data) {
+  if (!course || questions.length === 0) {
     return (
       <UserLayout>
         <div className="text-center py-16">
           <Title level={2}>Quiz not available</Title>
         </div>
       </UserLayout>
-    )
+    );
   }
 
-  const questions = mcqData.data
   const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const handleAnswerChange = (questionIndex, answer) => {
-    setAnswers({
-      ...answers,
-      [questionIndex]: answer
-    })
-  }
-
-  const handleSubmit = () => {
-    submitMutation.mutate(answers)
-  }
+    setAnswers({ ...answers, [questionIndex]: answer });
+  };
 
   const getAnsweredCount = () => {
-    return Object.keys(answers).length
-  }
+    return Object.keys(answers).length;
+  };
 
   if (submitted && results) {
     return (
@@ -172,13 +173,12 @@ const MCQQuiz = () => {
           </motion.div>
         </div>
       </UserLayout>
-    )
+    );
   }
 
   return (
     <UserLayout>
       <div className="max-w-4xl mx-auto">
-        {/* Quiz Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -189,7 +189,7 @@ const MCQQuiz = () => {
             <div className="flex items-center justify-between">
               <div>
                 <Title level={2} className="mb-1">
-                  {courseData.data.title} - Quiz
+                  {course.title} - Quiz
                 </Title>
                 <Text type="secondary">
                   Question {currentQuestion + 1} of {questions.length}
@@ -213,7 +213,6 @@ const MCQQuiz = () => {
           </Card>
         </motion.div>
 
-        {/* Question Card */}
         <motion.div
           key={currentQuestion}
           initial={{ opacity: 0, x: 20 }}
@@ -246,7 +245,6 @@ const MCQQuiz = () => {
           </Card>
         </motion.div>
 
-        {/* Navigation */}
         <Card>
           <div className="flex items-center justify-between">
             <div>
@@ -274,7 +272,7 @@ const MCQQuiz = () => {
                 <Button
                   type="primary"
                   onClick={handleSubmit}
-                  loading={submitMutation.isLoading}
+                  loading={isSubmitting}
                   disabled={getAnsweredCount() === 0}
                 >
                   Submit Quiz
@@ -284,7 +282,6 @@ const MCQQuiz = () => {
           </div>
         </Card>
 
-        {/* Question Navigator */}
         <Card className="mt-6">
           <Title level={4} className="mb-4">Question Navigator</Title>
           <div className="grid grid-cols-10 gap-2">
@@ -303,7 +300,7 @@ const MCQQuiz = () => {
         </Card>
       </div>
     </UserLayout>
-  )
-}
+  );
+};
 
-export default MCQQuiz
+export default MCQQuiz;

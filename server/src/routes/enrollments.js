@@ -41,7 +41,7 @@ router.post('/', auth, validateEnrollment, enrollmentController.enrollInCourse)
 
 /**
  * @swagger
- * /enrollments/me:
+ * /enrollments/my-enrollments:
  *   get:
  *     summary: Get my enrollments
  *     tags: [Enrollments]
@@ -51,6 +51,6 @@ router.post('/', auth, validateEnrollment, enrollmentController.enrollInCourse)
  *       200:
  *         description: Enrollments retrieved successfully
  */
-router.get('/me', auth, enrollmentController.getMyEnrollments)
+router.get('/my-enrollments', auth, enrollmentController.getMyEnrollments)
 
 module.exports = router

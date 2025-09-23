@@ -1,81 +1,81 @@
-import React, { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Form, Input, Upload, Button, Card, Typography, Alert, message } from 'antd'
-import { LinkOutlined, UploadOutlined, SendOutlined } from '@ant-design/icons'
-import { motion } from 'framer-motion'
-import { useMutation, useQueryClient } from 'react-query'
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Form, Upload, Button, Card, Typography, Alert, message as antdMessage } from 'antd';
+import { LinkOutlined, UploadOutlined, SendOutlined } from '@ant-design/icons';
+import { motion } from 'framer-motion';
 
-import UserLayout from '../../components/Layout/UserLayout'
-import { postApi } from '../../utils/apiServices'
-import { SUBMIT_ASSIGNMENT } from '../../utils/apiPaths'
+import UserLayout from '../../components/Layout/UserLayout';
+import { postApi } from '../../utils/apiServices';
+import { SUBMIT_ASSIGNMENT } from '../../utils/apiPaths';
+import FormInputs from '../../components/UI/FormInputs';
+import TextField from '../../components/UI/TextField';
 
-const { Title, Text, Paragraph } = Typography
-const { TextArea } = Input
+const { Title, Paragraph } = Typography;
 
 const AssignmentSubmission = () => {
-  const { slug } = useParams()
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [form] = Form.useForm()
-  const [fileList, setFileList] = useState([])
+  const { slug } = useParams();
+  const navigate = useNavigate();
+  const [form] = Form.useForm();
+  const [fileList, setFileList] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const submitMutation = useMutation(
-    (formData) => postApi(`${SUBMIT_ASSIGNMENT}/${slug}/assignment`, formData),
-    {
-      onSuccess: () => {
-        message.success('Assignment submitted successfully!')
-        queryClient.invalidateQueries('my-enrollments')
-        navigate(`/courses/${slug}`)
-      },
-      onError: (error) => {
-        message.error(error.message || 'Failed to submit assignment')
-      },
-    }
-  )
+  const handleSubmit = async (values) => {
+    const formData = new FormData();
 
-  const handleSubmit = (values) => {
-    const formData = new FormData()
-    
     if (values.projectLink) {
-      formData.append('link', values.projectLink)
-    }
-    
-    if (values.description) {
-      formData.append('description', values.description)
-    }
-    
-    if (fileList.length > 0) {
-      formData.append('file', fileList[0].originFileObj)
+      formData.append('link', values.projectLink);
     }
 
-    submitMutation.mutate(formData)
-  }
+    if (values.description) {
+      formData.append('description', values.description);
+    }
+
+    if (fileList.length > 0) {
+      formData.append('file', fileList[0].originFileObj);
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await postApi(`${SUBMIT_ASSIGNMENT}/${slug}/assignment`, formData);
+      if (response.statusCode === 200) {
+        antdMessage.success(response.message || 'Assignment submitted successfully!');
+        navigate(`/courses/${slug}`);
+      } else {
+        antdMessage.error(response.message || 'Failed to submit assignment');
+      }
+    } catch (error) {
+      antdMessage.error(error.response?.data?.message || error.message || 'Failed to submit assignment');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const uploadProps = {
     beforeUpload: (file) => {
-      const isValidType = file.type === 'application/pdf' || 
-                         file.type.startsWith('image/') ||
-                         file.type === 'application/zip' ||
-                         file.type === 'application/x-zip-compressed'
-      
+      const isValidType =
+        file.type === 'application/pdf' ||
+        file.type.startsWith('image/') ||
+        file.type === 'application/zip' ||
+        file.type === 'application/x-zip-compressed';
+
       if (!isValidType) {
-        message.error('You can only upload PDF, images, or ZIP files!')
-        return false
+        antdMessage.error('You can only upload PDF, images, or ZIP files!');
+        return false;
       }
-      
-      const isLt10M = file.size / 1024 / 1024 < 10
+
+      const isLt10M = file.size / 1024 / 1024 < 10;
       if (!isLt10M) {
-        message.error('File must be smaller than 10MB!')
-        return false
+        antdMessage.error('File must be smaller than 10MB!');
+        return false;
       }
-      
-      return false // Prevent automatic upload
+
+      return false; // Prevent automatic upload
     },
     onChange: ({ fileList: newFileList }) => {
-      setFileList(newFileList.slice(-1)) // Keep only the last file
+      setFileList(newFileList.slice(-1)); // Keep only the last file
     },
     fileList,
-  }
+  };
 
   return (
     <UserLayout>
@@ -91,8 +91,7 @@ const AssignmentSubmission = () => {
               <SendOutlined className="text-5xl text-blue-500 mb-4" />
               <Title level={2}>Submit Your Assignment</Title>
               <Paragraph type="secondary" className="text-lg">
-                Complete your learning journey by submitting your project or relevant work.
-                This is the final step to receive your course certificate.
+                Complete your learning journey by submitting your project or relevant work. This is the final step to receive your course certificate.
               </Paragraph>
             </div>
           </Card>
@@ -119,41 +118,25 @@ const AssignmentSubmission = () => {
               className="mb-6"
             />
 
-            <Form
-              form={form}
-              layout="vertical"
-              onFinish={handleSubmit}
-              size="large"
-            >
-              <Form.Item
+            <Form form={form} layout="vertical" onFinish={handleSubmit} size="large">
+              <FormInputs
                 name="projectLink"
-                label="Project Link (Optional)"
-                rules={[
-                  {
-                    type: 'url',
-                    message: 'Please enter a valid URL',
-                  },
-                ]}
-              >
-                <Input
-                  prefix={<LinkOutlined />}
-                  placeholder="https://github.com/username/project or https://your-demo-site.com"
-                />
-              </Form.Item>
+                title="Project Link (Optional)"
+                prefix={<LinkOutlined />}
+                rules={[{ type: 'url', message: 'Please enter a valid URL' }]}
+                placeholder="https://github.com/username/project or https://your-demo-site.com"
+              />
 
-              <Form.Item
+              <TextField
                 name="description"
-                label="Project Description"
+                title="Project Description"
+                rows={6}
                 rules={[
                   { required: true, message: 'Please provide a description of your work' },
                   { min: 50, message: 'Description must be at least 50 characters' },
                 ]}
-              >
-                <TextArea
-                  rows={6}
-                  placeholder="Describe your project, what you built, technologies used, challenges faced, and key learnings from this course..."
-                />
-              </Form.Item>
+                placeholder="Describe your project, what you built, technologies used, challenges faced, and key learnings from this course..."
+              />
 
               <Form.Item
                 name="file"
@@ -177,18 +160,15 @@ const AssignmentSubmission = () => {
 
               <Form.Item>
                 <div className="flex justify-between">
-                  <Button
-                    size="large"
-                    onClick={() => navigate(`/courses/${slug}`)}
-                  >
+                  <Button size="large" onClick={() => navigate(`/courses/${slug}`)}>
                     Back to Course
                   </Button>
-                  
+
                   <Button
                     type="primary"
                     size="large"
                     htmlType="submit"
-                    loading={submitMutation.isLoading}
+                    loading={isSubmitting}
                     icon={<SendOutlined />}
                   >
                     Submit Assignment
@@ -200,7 +180,7 @@ const AssignmentSubmission = () => {
         </motion.div>
       </div>
     </UserLayout>
-  )
-}
+  );
+};
 
-export default AssignmentSubmission
+export default AssignmentSubmission;

@@ -1,4 +1,5 @@
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
+const slugify = require('slugify'); // Import slugify
 
 const contentSchema = new mongoose.Schema({
   title: {
@@ -19,7 +20,7 @@ const contentSchema = new mongoose.Schema({
     type: Number,
     default: 0
   }
-})
+});
 
 const mcqSchema = new mongoose.Schema({
   question: {
@@ -38,18 +39,18 @@ const mcqSchema = new mongoose.Schema({
     max: 3
   },
   explanation: String
-})
+});
 
 const courseSchema = new mongoose.Schema({
   title: {
     type: String,
     required: [true, 'Course title is required'],
     trim: true,
+    unique: true, // Titles should be unique to avoid slug conflicts
     maxlength: [100, 'Title cannot exceed 100 characters']
   },
   slug: {
     type: String,
-    required: true,
     unique: true,
     lowercase: true
   },
@@ -102,37 +103,35 @@ const courseSchema = new mongoose.Schema({
     count: { type: Number, default: 0 }
   }
 }, {
-  timestamps: true
-})
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
 // Indexes
-courseSchema.index({ slug: 1 })
-courseSchema.index({ isPublished: 1 })
-courseSchema.index({ difficulty: 1 })
-courseSchema.index({ tags: 1 })
-courseSchema.index({ createdBy: 1 })
+courseSchema.index({ slug: 1 });
+courseSchema.index({ isPublished: 1 });
+courseSchema.index({ difficulty: 1 });
+courseSchema.index({ tags: 1 });
+courseSchema.index({ createdBy: 1 });
 
-// Generate slug before saving
+// Generate slug from title before saving
 courseSchema.pre('save', function(next) {
-  if (this.isModified('title') && !this.slug) {
-    this.slug = this.title
-      .toLowerCase()
-      .replace(/[^a-z0-9 -]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim()
+  // Only generate a new slug if the title has changed
+  if (this.isModified('title')) {
+    this.slug = slugify(this.title, { lower: true, strict: true });
   }
-  next()
-})
+  next();
+});
 
 // Virtual for content count
 courseSchema.virtual('contentCount').get(function() {
-  return this.content ? this.content.length : 0
-})
+  return this.content ? this.content.length : 0;
+});
 
 // Virtual for MCQ count
 courseSchema.virtual('mcqCount').get(function() {
-  return this.mcq ? this.mcq.length : 0
-})
+  return this.mcq ? this.mcq.length : 0;
+});
 
-module.exports = mongoose.model('Course', courseSchema)
+module.exports = mongoose.model('Course', courseSchema);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Row,
@@ -14,6 +14,7 @@ import {
   Alert,
   Avatar,
   Rate,
+  message as antdMessage,
 } from 'antd';
 import {
   PlayCircleOutlined,
@@ -28,7 +29,6 @@ import {
   StarFilled,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
 import UserLayout from '../../components/Layout/UserLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getApi, putApi } from '../../utils/apiServices';
@@ -44,36 +44,54 @@ const { TabPane } = Tabs;
 const CourseDetail = () => {
   const { slug } = useParams();
   const [activeContent, setActiveContent] = useState(null);
-  const queryClient = useQueryClient();
+  const [course, setCourse] = useState(null);
+  const [enrollment, setEnrollment] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: courseData, isLoading } = useQuery(
-    ['course', slug],
-    () => getApi(`${GET_COURSES}/${slug}`)
-  );
+  const fetchCourseAndEnrollment = async () => {
+    setIsLoading(true);
+    try {
+      const courseResponse = await getApi(`${GET_COURSES}/${slug}`);
+      const enrollmentResponse = await getApi(GET_MY_ENROLLMENTS);
+      
+      const courseData = courseResponse?.data;
+      const enrollments = enrollmentResponse?.data || [];
+      const currentEnrollment = enrollments.find((e) => e.course.slug === slug);
 
-  const { data: enrollmentData } = useQuery(
-    'my-enrollments',
-    () => getApi(GET_MY_ENROLLMENTS)
-  );
+      setCourse(courseData);
+      setEnrollment(currentEnrollment);
 
-  const progressMutation = useMutation(
-    ({ enrollmentId, contentId }) =>
-      putApi(`${UPDATE_ENROLLMENT_PROGRESS}/${enrollmentId}/progress`, {
-        contentId,
-      }),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('my-enrollments');
-      },
+    } catch (error) {
+      antdMessage.error('Failed to fetch course data.');
+    } finally {
+      setIsLoading(false);
     }
-  );
+  };
+
+  useEffect(() => {
+    fetchCourseAndEnrollment();
+  }, [slug]);
+
+  const handleProgressUpdate = async (contentId) => {
+    if (!enrollment) return;
+    try {
+      const response = await putApi(
+        `${UPDATE_ENROLLMENT_PROGRESS}/${enrollment._id}/progress`,
+        { contentId }
+      );
+      if (response.statusCode === 200) {
+        fetchCourseAndEnrollment(); 
+      } else {
+        antdMessage.error(response.message || 'Failed to update progress.');
+      }
+    } catch (error) {
+      antdMessage.error(error.response?.data?.message || error.message || 'An error occurred while updating progress.');
+    }
+  };
 
   if (isLoading) {
     return <LoadingSpinner />;
   }
-
-  const course = courseData?.data;
-  const enrollment = enrollmentData?.data?.find((e) => e.course.slug === slug);
 
   if (!course || !enrollment) {
     return (
@@ -93,10 +111,7 @@ const CourseDetail = () => {
   const handleContentSelect = (content) => {
     setActiveContent(content);
     if (!completedContent.has(content._id)) {
-      progressMutation.mutate({
-        enrollmentId: enrollment._id,
-        contentId: content._id,
-      });
+      handleProgressUpdate(content._id);
     }
   };
 

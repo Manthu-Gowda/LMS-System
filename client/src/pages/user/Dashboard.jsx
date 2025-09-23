@@ -1,199 +1,136 @@
-import React from 'react';
-import { Row, Col, Card, Button, Typography, Badge, Progress, List, Avatar } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Row, Col, Card, Button, Typography, Progress, List, Avatar } from 'antd';
+import { Link, useNavigate } from 'react-router-dom'; 
 import {
   PlayCircleOutlined,
   TrophyOutlined,
   BookOutlined,
-  FireOutlined,
+  LineChartOutlined,
   StarOutlined,
-  ArrowRightOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
-import { useQuery } from 'react-query';
-import { useNavigate } from 'react-router-dom';
 import UserLayout from '../../components/Layout/UserLayout';
-import CourseCard from '../../components/CourseCard';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { getApi } from '../../utils/apiServices';
 import { GET_MY_ENROLLMENTS } from '../../utils/apiPaths';
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
-const StatCard = ({ icon, title, value, color }) => (
-  <motion.div whileHover={{ translateY: -5 }} className="h-full">
-    <Card className="shadow-md border-0 h-full">
-      <div className="flex items-center">
-        <div className={`text-3xl text-${color}-500`}>{icon}</div>
-        <div className="ml-4">
-          <Text className="text-gray-500">{title}</Text>
-          <Title level={3} className="mt-0">
-            {value}
-          </Title>
-        </div>
+const StatCard = ({ icon, title, value, colorClass }) => (
+  <Card className="shadow-lg border-0 h-full">
+    <div className="flex items-center space-x-4">
+      <div className={`p-3 rounded-full ${colorClass}`}>{icon}</div>
+      <div>
+        <Text className="text-md text-gray-500">{title}</Text>
+        <Title level={4} className="mt-0">{value}</Title>
       </div>
-    </Card>
-  </motion.div>
+    </div>
+  </Card>
 );
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [enrollments, setEnrollments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: enrollments, isLoading } = useQuery(
-    'my-enrollments',
-    () => getApi(GET_MY_ENROLLMENTS)
-  );
+  useEffect(() => {
+    const fetchEnrollments = async () => {
+      try {
+        const response = await getApi(GET_MY_ENROLLMENTS);
+        setEnrollments(response.data || []);
+      } catch (error) {
+        console.error("Failed to fetch enrollments", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchEnrollments();
+  }, []);
 
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
+  console.log("enrollments", enrollments)
 
-  const enrollmentData = enrollments?.data || [];
-  const inProgressCourses = enrollmentData.filter((e) => !e.isCompleted);
-  const completedCourses = enrollmentData.filter((e) => e.isCompleted);
+  if (isLoading) return <LoadingSpinner />;
 
-  const leaderboardData = [
-    { name: 'Alex Ray', score: 2400, avatar: <Avatar src="https://i.pravatar.cc/150?u=a042581f4e29026704d" /> },
-    { name: 'Jane Doe', score: 2100, avatar: <Avatar src="https://i.pravatar.cc/150?u=a042581f4e29026704e" /> },
-    { name: 'John Smith', score: 1800, avatar: <Avatar src="https://i.pravatar.cc/150?u=a042581f4e29026704f" /> },
+  const inProgressCourses = enrollments.filter(e => !e.isCompleted);
+  const completedCourses = enrollments.filter(e => e.isCompleted);
+
+  const recentActivity = [
+    { text: 'You completed the "Introduction to React" course.', time: '2 days ago' },
+    { text: 'A new course "Advanced Node.js" has been published.', time: '3 days ago' },
   ];
 
   return (
     <UserLayout>
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <Title level={2} className="mb-1">
-            Welcome Back, User!
-          </Title>
-          <Text className="text-lg text-gray-500">
-            Let's continue your learning journey.
-          </Text>
-        </motion.div>
+      <Title level={2} className="mb-4">Welcome Back, User!</Title>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={16}>
+          <motion.div whileHover={{ translateY: -5 }}>
+            <Card
+              className="shadow-xl border-0 bg-gradient-to-r from-blue-500 to-blue-600 text-white"
+              style={{ minHeight: '200px' }}
+            >
+              <Title level={3} className="text-white">Keep up the great work!</Title>
+              <Paragraph className="text-blue-100">You are on a roll. Here is an overview of your progress.</Paragraph>
+              <Button type="primary" size="large" onClick={() => navigate('/courses')}>Explore Courses</Button>
+            </Card>
+          </motion.div>
+        </Col>
+        <Col xs={24} md={8}>
+          <StatCard icon={<BookOutlined className="text-white" />} title="Enrolled Courses" value={enrollments.length} colorClass="bg-blue-500" />
+        </Col>
+        <Col xs={24} md={8}>
+          <StatCard icon={<TrophyOutlined className="text-white" />} title="Completed Courses" value={completedCourses.length} colorClass="bg-green-500" />
+        </Col>
+        <Col xs={24} md={8}>
+          <StatCard icon={<LineChartOutlined className="text-white" />} title="Overall Progress" value={`${Math.round(Math.random() * 20 + 10)}%`} colorClass="bg-purple-500" />
+        </Col>
 
-        <Row gutter={[24, 24]} className="mb-8">
-          <Col xs={24} sm={12} lg={8}>
-            <StatCard
-              icon={<BookOutlined />}
-              title="Enrolled Courses"
-              value={enrollmentData.length}
-              color="blue"
-            />
-          </Col>
-          <Col xs={24} sm={12} lg={8}>
-            <StatCard
-              icon={<TrophyOutlined />}
-              title="Completed Courses"
-              value={completedCourses.length}
-              color="green"
-            />
-          </Col>
-          <Col xs={24} sm={12} lg={8}>
-            <StatCard
-              icon={<FireOutlined />}
-              title="Points Earned"
-              value="1,200"
-              color="red"
-            />
-          </Col>
-        </Row>
-
-        <Row gutter={[24, 24]}>
-          <Col xs={24} lg={16}>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-              <Card className="shadow-md border-0">
-                <div className="flex justify-between items-center mb-4">
-                  <Title level={4} className="mb-0">
-                    Continue Learning
-                  </Title>
-                  <Button type="link" onClick={() => navigate('/courses')}>
-                    View All
-                  </Button>
-                </div>
-                {inProgressCourses.length > 0 ? (
-                  <div className="flex overflow-x-auto space-x-4 pb-4">
-                    {inProgressCourses.map((enrollment) => (
-                      <motion.div key={enrollment._id} className="min-w-[300px]">
-                        <CourseCard
-                          course={enrollment.course}
-                          enrollment={enrollment}
-                          showProgress
-                        />
-                      </motion.div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <BookOutlined className="text-5xl text-gray-300" />
-                    <Text className="block mt-4 text-gray-500">
-                      You have no courses in progress.
-                    </Text>
-                    <Button
-                      type="primary"
-                      className="mt-4"
-                      icon={<PlayCircleOutlined />}
-                      onClick={() => navigate('/courses')}
-                    >
-                      Explore Courses
-                    </Button>
-                  </div>
+        <Col xs={24} lg={16}>
+          <Card title="Continue Learning" className="shadow-lg border-0 h-full">
+            {inProgressCourses.length > 0 ? (
+              <List
+                itemLayout="horizontal"
+                dataSource={inProgressCourses.slice(0, 3)}
+                renderItem={item => (
+                  <List.Item
+                    actions={[<Button type="text" icon={<RightOutlined />} onClick={() => navigate(`/courses/${item.course.slug}`)} />]}
+                  >
+                    <List.Item.Meta
+                      avatar={<Avatar src={item.course.thumbnail} />}
+                      title={<Link to={`/courses/${item.course.slug}`}>{item.course.title}</Link>}
+                      description={<Progress percent={Math.round((item.progress.contentCompleted.length / item.course.content.length) * 100)} size="small" />}
+                    />
+                  </List.Item>
                 )}
-              </Card>
-            </motion.div>
-            
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-              <Card className="shadow-md border-0">
-                <div className="flex justify-between items-center mb-4">
-                  <Title level={4} className="mb-0">
-                    What's New
-                  </Title>
-                  <Button type="link">See All</Button>
-                </div>
-                <List
-                  itemLayout="horizontal"
-                  dataSource={[{ title: 'New Course: Advanced React Testing', description: 'Master testing with Jest and React Testing Library.' }]}
-                  renderItem={(item) => (
-                    <List.Item>
-                      <List.Item.Meta
-                        avatar={<Avatar icon={<StarOutlined />} />}
-                        title={<a href="#">{item.title}</a>}
-                        description={item.description}
-                      />
-                      <Button type="text" icon={<ArrowRightOutlined />} />
-                    </List.Item>
-                  )}
-                />
-              </Card>
-            </motion.div>
-          </Col>
+              />
+            ) : (
+              <div className="text-center py-8">
+                <BookOutlined className="text-4xl text-gray-300" />
+                <Text className="block mt-2 text-gray-500">No courses in progress. Time to learn something new!</Text>
+                <Button type="primary" className="mt-4" onClick={() => navigate('/courses')}>Explore Courses</Button>
+              </div>
+            )}
+          </Card>
+        </Col>
 
-          <Col xs={24} lg={8}>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-              <Card className="shadow-md border-0">
-                <Title level={4} className="mb-4">
-                  Leaderboard
-                </Title>
-                <List
-                  itemLayout="horizontal"
-                  dataSource={leaderboardData}
-                  renderItem={(item, index) => (
-                    <List.Item>
-                      <List.Item.Meta
-                        avatar={item.avatar}
-                        title={<a href="#">{item.name}</a>}
-                        description={`${item.score} points`}
-                      />
-                      <Badge count={`#${index + 1}`} style={{ backgroundColor: '#52c41a' }} />
-                    </List.Item>
-                  )}
-                />
-              </Card>
-            </motion.div>
-          </Col>
-        </Row>
-      </div>
+        <Col xs={24} lg={8}>
+          <Card title="Recent Activity" className="shadow-lg border-0 h-full">
+            <List
+              dataSource={recentActivity}
+              renderItem={item => (
+                <List.Item>
+                  <List.Item.Meta
+                    avatar={<Avatar icon={<StarOutlined />} />}
+                    title={item.text}
+                    description={item.time}
+                  />
+                </List.Item>
+              )}
+            />
+          </Card>
+        </Col>
+      </Row>
     </UserLayout>
   );
 };

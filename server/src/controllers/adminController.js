@@ -1,8 +1,8 @@
-const User = require('../models/User')
-const Course = require('../models/Course')
-const Enrollment = require('../models/Enrollment')
-const Certificate = require('../models/Certificate')
-const logger = require('../utils/logger')
+const User = require('../models/User');
+const Course = require('../models/Course');
+const Enrollment = require('../models/Enrollment');
+const Certificate = require('../models/Certificate');
+const logger = require('../utils/logger');
 
 // Get admin dashboard overview
 exports.getOverview = async (req, res) => {
@@ -23,9 +23,11 @@ exports.getOverview = async (req, res) => {
         .populate('course', 'title')
         .sort({ createdAt: -1 })
         .limit(10)
-    ])
+    ]);
 
     res.status(200).json({
+      statusCode: 200,
+      message: 'Overview fetched successfully',
       data: {
         totalUsers,
         totalCourses,
@@ -33,27 +35,29 @@ exports.getOverview = async (req, res) => {
         totalCertificates,
         recentEnrollments
       }
-    })
+    });
   } catch (error) {
-    logger.error('Get admin overview error:', error)
+    logger.error('Get admin overview error:', error);
     res.status(500).json({
+      statusCode: 500,
       message: 'Internal server error'
-    })
+    });
   }
-}
+};
 
 // Get user progress details
 exports.getUserProgress = async (req, res) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
 
     const user = await User.findById(id)
-      .select('-password -resetPasswordToken -resetPasswordExpires')
+      .select('-password -resetPasswordToken -resetPasswordExpires');
     
     if (!user) {
       return res.status(404).json({
+        statusCode: 404,
         message: 'User not found'
-      })
+      });
     }
 
     const enrollments = await Enrollment.find({ user: id })
@@ -62,18 +66,21 @@ exports.getUserProgress = async (req, res) => {
         select: 'title slug difficulty content estimatedDuration'
       })
       .populate('certificateId', 'certificateId issuedAt')
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
+      statusCode: 200,
+      message: 'User progress fetched successfully',
       data: {
         user,
         enrollments
       }
-    })
+    });
   } catch (error) {
-    logger.error('Get user progress error:', error)
+    logger.error('Get user progress error:', error);
     res.status(500).json({
+      statusCode: 500,
       message: 'Internal server error'
-    })
+    });
   }
-}
+};

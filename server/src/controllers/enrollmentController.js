@@ -8,25 +8,16 @@ exports.enrollInCourse = async (req, res) => {
     const { courseId } = req.body
     const userId = req.user.userId
 
-    // Check if course exists and is published
     const course = await Course.findById(courseId)
     if (!course || !course.isPublished) {
-      return res.status(404).json({
-        success: false,
-        message: 'Course not found or not available'
-      })
+      return res.status(404).json({ message: 'Course not found or not available' })
     }
 
-    // Check if already enrolled
     const existingEnrollment = await Enrollment.findOne({ user: userId, course: courseId })
     if (existingEnrollment) {
-      return res.status(400).json({
-        success: false,
-        message: 'You are already enrolled in this course'
-      })
+      return res.status(400).json({ message: 'You are already enrolled in this course' })
     }
 
-    // Create enrollment
     const enrollment = new Enrollment({
       user: userId,
       course: courseId
@@ -38,22 +29,17 @@ exports.enrollInCourse = async (req, res) => {
       { path: 'user', select: 'name email' }
     ])
 
-    // Update course enrollment count
     await Course.findByIdAndUpdate(courseId, { $inc: { enrollmentCount: 1 } })
 
     logger.info(`User enrolled: ${userId} in course ${courseId}`)
 
     res.status(201).json({
-      success: true,
       message: 'Enrolled in course successfully',
       data: enrollment
     })
   } catch (error) {
     logger.error('Enroll in course error:', error)
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    })
+    res.status(500).json({ message: 'Internal server error' })
   }
 }
 
@@ -70,15 +56,9 @@ exports.getMyEnrollments = async (req, res) => {
       .populate('certificateId', 'certificateId issuedAt')
       .sort({ createdAt: -1 })
 
-    res.json({
-      success: true,
-      data: enrollments
-    })
+    res.status(200).json({ data: enrollments })
   } catch (error) {
     logger.error('Get my enrollments error:', error)
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    })
+    res.status(500).json({ message: 'Internal server error' })
   }
 }

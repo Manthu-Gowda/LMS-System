@@ -21,7 +21,7 @@ const EditCourse = () => {
 
   const { data: courseData, isLoading } = useQuery(
     ['course-edit', id],
-    () => courseAPI.getCourseBySlug(id) // This would need to be updated to get by ID
+    () => courseAPI.getCourseById(id)
   )
 
   const updateMutation = useMutation(
@@ -82,7 +82,7 @@ const EditCourse = () => {
     return <LoadingSpinner />
   }
 
-  if (!courseData?.data) {
+  if (!courseData) {
     return (
       <AdminLayout>
         <div className="text-center py-16">
@@ -92,7 +92,7 @@ const EditCourse = () => {
     )
   }
 
-  const course = courseData.data
+  const course = courseData
 
   // Similar structure to CreateCourse but with populated initial values
   return (

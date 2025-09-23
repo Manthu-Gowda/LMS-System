@@ -13,16 +13,10 @@ exports.getMyCertificates = async (req, res) => {
       .populate('user', 'name email')
       .sort({ issuedAt: -1 })
 
-    res.json({
-      success: true,
-      data: certificates
-    })
+    res.status(200).json({ data: certificates })
   } catch (error) {
     logger.error('Get my certificates error:', error)
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    })
+    res.status(500).json({ message: 'Internal server error' })
   }
 }
 
@@ -37,18 +31,12 @@ exports.getCertificate = async (req, res) => {
       .populate('course', 'title')
 
     if (!certificate) {
-      return res.status(404).json({
-        success: false,
-        message: 'Certificate not found'
-      })
+      return res.status(404).json({ message: 'Certificate not found' })
     }
 
     // Check ownership (user can only download their own certificates, admin can download any)
     if (req.user.role !== 'admin' && certificate.user._id.toString() !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      })
+      return res.status(403).json({ message: 'Access denied' })
     }
 
     // Check if PDF file exists
@@ -58,10 +46,7 @@ exports.getCertificate = async (req, res) => {
       await fs.access(pdfPath)
     } catch (fileError) {
       logger.error(`Certificate PDF not found: ${pdfPath}`)
-      return res.status(404).json({
-        success: false,
-        message: 'Certificate file not found'
-      })
+      return res.status(404).json({ message: 'Certificate file not found' })
     }
 
     // Set response headers for PDF download
@@ -75,9 +60,6 @@ exports.getCertificate = async (req, res) => {
     logger.info(`Certificate downloaded: ${certificate.certificateId} by user ${userId}`)
   } catch (error) {
     logger.error('Get certificate error:', error)
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    })
+    res.status(500).json({ message: 'Internal server error' })
   }
 }

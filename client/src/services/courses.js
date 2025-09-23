@@ -8,6 +8,10 @@ export const getCourseBySlug = (slug) => {
   return api.get(`/courses/${slug}`)
 }
 
+export const getCourseById = (id) => {
+  return api.get(`/courses/id/${id}`)
+}
+
 export const createCourse = (courseData) => {
   return api.post('/courses', courseData, {
     headers: {

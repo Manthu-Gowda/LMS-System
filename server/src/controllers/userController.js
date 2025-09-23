@@ -26,7 +26,6 @@ exports.getAllUsers = async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit)
 
-    // Get enrollment counts for each user
     const usersWithEnrollments = await Promise.all(
       users.map(async (user) => {
         const enrollments = await Enrollment.find({ user: user._id })
@@ -41,8 +40,7 @@ exports.getAllUsers = async (req, res) => {
 
     const total = await User.countDocuments(query)
 
-    res.json({
-      success: true,
+    res.status(200).json({
       data: usersWithEnrollments,
       pagination: {
         page: parseInt(page),
@@ -53,10 +51,7 @@ exports.getAllUsers = async (req, res) => {
     })
   } catch (error) {
     logger.error('Get all users error:', error)
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    })
+    res.status(500).json({ message: 'Internal server error' })
   }
 }
 
@@ -67,31 +62,22 @@ exports.getUserById = async (req, res) => {
     const requestingUserId = req.user.userId
     const requestingUserRole = req.user.role
 
-    // Users can only view their own profile, admins can view any profile
     if (requestingUserRole !== 'admin' && id !== requestingUserId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      })
+      return res.status(403).json({ message: 'Access denied' })
     }
 
     const user = await User.findById(id)
       .select('-password -resetPasswordToken -resetPasswordExpires')
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      })
+      return res.status(404).json({ message: 'User not found' })
     }
 
-    // Get user's enrollments
     const enrollments = await Enrollment.find({ user: id })
       .populate('course', 'title slug')
       .populate('certificateId', 'certificateId issuedAt')
 
-    res.json({
-      success: true,
+    res.status(200).json({
       data: {
         user,
         enrollments
@@ -99,9 +85,6 @@ exports.getUserById = async (req, res) => {
     })
   } catch (error) {
     logger.error('Get user by ID error:', error)
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    })
+    res.status(500).json({ message: 'Internal server error' })
   }
 }

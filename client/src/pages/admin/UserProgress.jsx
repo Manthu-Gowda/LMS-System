@@ -23,7 +23,7 @@ const UserProgress = () => {
     return <LoadingSpinner />
   }
 
-  if (!progressData?.data) {
+  if (!progressData) {
     return (
       <AdminLayout>
         <div className="text-center py-16">
@@ -33,7 +33,7 @@ const UserProgress = () => {
     )
   }
 
-  const { user, enrollments } = progressData.data
+  const { user, enrollments } = progressData
 
   const columns = [
     {

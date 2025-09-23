@@ -25,8 +25,7 @@ exports.getOverview = async (req, res) => {
         .limit(10)
     ])
 
-    res.json({
-      success: true,
+    res.status(200).json({
       data: {
         totalUsers,
         totalCourses,
@@ -38,7 +37,6 @@ exports.getOverview = async (req, res) => {
   } catch (error) {
     logger.error('Get admin overview error:', error)
     res.status(500).json({
-      success: false,
       message: 'Internal server error'
     })
   }
@@ -54,7 +52,6 @@ exports.getUserProgress = async (req, res) => {
     
     if (!user) {
       return res.status(404).json({
-        success: false,
         message: 'User not found'
       })
     }
@@ -67,8 +64,7 @@ exports.getUserProgress = async (req, res) => {
       .populate('certificateId', 'certificateId issuedAt')
       .sort({ createdAt: -1 })
 
-    res.json({
-      success: true,
+    res.status(200).json({
       data: {
         user,
         enrollments
@@ -77,7 +73,6 @@ exports.getUserProgress = async (req, res) => {
   } catch (error) {
     logger.error('Get user progress error:', error)
     res.status(500).json({
-      success: false,
       message: 'Internal server error'
     })
   }

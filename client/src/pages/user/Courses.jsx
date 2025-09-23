@@ -39,8 +39,8 @@ const Courses = () => {
     }
   )
 
-  const courses = coursesData?.data || []
-  const enrollments = enrollmentsData?.data || []
+  const courses = coursesData || []
+  const enrollments = enrollmentsData || []
   
   // Create a map of enrolled course IDs for quick lookup
   const enrolledCourseIds = new Set(

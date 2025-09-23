@@ -1,26 +1,54 @@
-import React, { useState } from 'react'
-import { Form, Input, Button, Card, Typography, Divider } from 'antd'
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons'
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { useAuth } from '../../contexts/AuthContext'
+import React, { useState } from 'react';
+import { Form, Input, Button, Card, Typography, Divider } from 'antd';
+import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { useAuth } from '../../contexts/AuthContext';
+import { postApi } from '../../services/api';
+import { USER_LOGIN } from '../../utils/apiPath';
+import { message } from 'antd';
 
-const { Title, Text } = Typography
+const { Title, Text } = Typography;
 
 const Login = () => {
-  const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
   const onFinish = async (values) => {
-    setLoading(true)
+    setLoading(true);
+    const payload = {
+      email: values.email,
+      password: values.password,
+    };
     try {
-      await login(values.email, values.password, 2) // User login
+      const { statusCode, data, message: msg } = await postApi(USER_LOGIN, payload);
+      if (statusCode === 200) {
+        const { accessToken, refreshToken, expiryTime, ...userData } = data;
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
+        localStorage.setItem('expiryTime', expiryTime);
+        localStorage.setItem('user', JSON.stringify(userData));
+        login(data);
+        successToast(msg);
+        navigate('/dashboard');
+      } else {
+        errorToast(msg);
+      }
     } catch (error) {
-      // Error is handled in AuthContext
+      console.error('Login failed:', error);
+      errorToast('An error occurred during login.');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
+  };
+  const successToast = (msg) => {
+    message.success(msg);
   }
+  const errorToast = (msg) => {
+    message.error(msg);
+  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
@@ -126,7 +154,7 @@ const Login = () => {
         </Card>
       </motion.div>
     </div>
-  )
-}
+  );
+};
 
-export default Login
+export default Login;

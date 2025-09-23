@@ -31,7 +31,7 @@ const AdminDashboard = () => {
     return <LoadingSpinner />
   }
 
-  const overview = overviewData?.data || {}
+  const overview = overviewData || {}
   const users = usersData?.data || []
 
   const recentUsers = users

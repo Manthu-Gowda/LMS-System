@@ -22,11 +22,11 @@ const Dashboard = () => {
   )
 
   const enrollmentData = enrollments?.data || []
-  const inProgressCourses = enrollmentData.filter(e => !e.isCompleted)
-  const completedCourses = enrollmentData.filter(e => e.isCompleted)
+  const inProgressCourses = Array.isArray(enrollmentData) ? enrollmentData.filter(e => !e.isCompleted) : []
+  const completedCourses = Array.isArray(enrollmentData) ? enrollmentData.filter(e => e.isCompleted) : []
 
   const getTotalProgress = () => {
-    if (enrollmentData.length === 0) return 0
+    if (!Array.isArray(enrollmentData) || enrollmentData.length === 0) return 0
     const totalProgress = enrollmentData.reduce((sum, enrollment) => {
       const courseContent = enrollment.course.content?.length || 1
       const completedContent = enrollment.progress?.contentCompleted?.length || 0

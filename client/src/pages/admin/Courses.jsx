@@ -52,7 +52,7 @@ const AdminCourses = () => {
     return <LoadingSpinner />
   }
 
-  const courses = coursesData?.data || []
+  const courses = coursesData || []
 
   const columns = [
     {

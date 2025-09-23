@@ -50,7 +50,7 @@ const CourseDetail = () => {
     return <LoadingSpinner />
   }
 
-  if (!courseData?.data) {
+  if (!courseData) {
     return (
       <UserLayout>
         <div className="text-center py-16">
@@ -60,8 +60,8 @@ const CourseDetail = () => {
     )
   }
 
-  const course = courseData.data
-  const enrollments = enrollmentData?.data || []
+  const course = courseData
+  const enrollments = enrollmentData || []
   const enrollment = enrollments.find(e => e.course.slug === slug)
 
   if (!enrollment) {

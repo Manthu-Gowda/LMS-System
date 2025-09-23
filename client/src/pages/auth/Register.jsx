@@ -14,7 +14,8 @@ const Register = () => {
   const onFinish = async (values) => {
     setLoading(true)
     try {
-      await register(values)
+      const { confirmPassword, ...data } = values;
+      await register(data)
     } catch (error) {
       // Error is handled in AuthContext
     } finally {

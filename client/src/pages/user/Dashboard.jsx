@@ -1,225 +1,201 @@
-import React from 'react'
-import { Row, Col, Card, Button, Typography, Badge } from 'antd'
-import { PlayCircleOutlined, TrophyOutlined, BookOutlined } from '@ant-design/icons'
-import { motion } from 'framer-motion'
-import { useQuery } from 'react-query'
-import { useNavigate } from 'react-router-dom'
+import React from 'react';
+import { Row, Col, Card, Button, Typography, Badge, Progress, List, Avatar } from 'antd';
+import {
+  PlayCircleOutlined,
+  TrophyOutlined,
+  BookOutlined,
+  FireOutlined,
+  StarOutlined,
+  ArrowRightOutlined,
+} from '@ant-design/icons';
+import { motion } from 'framer-motion';
+import { useQuery } from 'react-query';
+import { useNavigate } from 'react-router-dom';
+import UserLayout from '../../components/Layout/UserLayout';
+import CourseCard from '../../components/CourseCard';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { getApi } from '../../utils/apiServices';
+import { GET_MY_ENROLLMENTS } from '../../utils/apiPaths';
 
-import UserLayout from '../../components/Layout/UserLayout'
-import CourseCard from '../../components/CourseCard'
-import LoadingSpinner from '../../components/LoadingSpinner'
-import ProgressRing from '../../components/ProgressRing'
-import * as courseAPI from '../../services/courses'
+const { Title, Text } = Typography;
 
-const { Title, Text } = Typography
+const StatCard = ({ icon, title, value, color }) => (
+  <motion.div whileHover={{ translateY: -5 }} className="h-full">
+    <Card className="shadow-md border-0 h-full">
+      <div className="flex items-center">
+        <div className={`text-3xl text-${color}-500`}>{icon}</div>
+        <div className="ml-4">
+          <Text className="text-gray-500">{title}</Text>
+          <Title level={3} className="mt-0">
+            {value}
+          </Title>
+        </div>
+      </div>
+    </Card>
+  </motion.div>
+);
 
 const Dashboard = () => {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const { data: enrollments, isLoading } = useQuery(
     'my-enrollments',
-    courseAPI.getMyEnrollments
-  )
-
-  const enrollmentData = enrollments?.data || []
-  const inProgressCourses = Array.isArray(enrollmentData) ? enrollmentData.filter(e => !e.isCompleted) : []
-  const completedCourses = Array.isArray(enrollmentData) ? enrollmentData.filter(e => e.isCompleted) : []
-
-  const getTotalProgress = () => {
-    if (!Array.isArray(enrollmentData) || enrollmentData.length === 0) return 0
-    const totalProgress = enrollmentData.reduce((sum, enrollment) => {
-      const courseContent = enrollment.course.content?.length || 1
-      const completedContent = enrollment.progress?.contentCompleted?.length || 0
-      return sum + (completedContent / courseContent)
-    }, 0)
-    return (totalProgress / enrollmentData.length) * 100
-  }
+    () => getApi(GET_MY_ENROLLMENTS)
+  );
 
   if (isLoading) {
-    return <LoadingSpinner />
+    return <LoadingSpinner />;
   }
+
+  const enrollmentData = enrollments?.data || [];
+  const inProgressCourses = enrollmentData.filter((e) => !e.isCompleted);
+  const completedCourses = enrollmentData.filter((e) => e.isCompleted);
+
+  const leaderboardData = [
+    { name: 'Alex Ray', score: 2400, avatar: <Avatar src="https://i.pravatar.cc/150?u=a042581f4e29026704d" /> },
+    { name: 'Jane Doe', score: 2100, avatar: <Avatar src="https://i.pravatar.cc/150?u=a042581f4e29026704e" /> },
+    { name: 'John Smith', score: 1800, avatar: <Avatar src="https://i.pravatar.cc/150?u=a042581f4e29026704f" /> },
+  ];
 
   return (
     <UserLayout>
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
           className="mb-8"
         >
-          <Title level={1} className="mb-2">
-            Welcome to Your Learning Dashboard
+          <Title level={2} className="mb-1">
+            Welcome Back, User!
           </Title>
-          <Text type="secondary" className="text-lg">
-            Track your progress and continue your learning journey
+          <Text className="text-lg text-gray-500">
+            Let's continue your learning journey.
           </Text>
         </motion.div>
 
-        {/* Stats Cards */}
         <Row gutter={[24, 24]} className="mb-8">
-          <Col xs={24} sm={8}>
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1, duration: 0.5 }}
-            >
-              <Card className="text-center">
-                <div className="p-4">
-                  <BookOutlined className="text-4xl text-blue-600 mb-3" />
-                  <Title level={2} className="mb-1">
-                    {enrollmentData.length}
-                  </Title>
-                  <Text type="secondary">Enrolled Courses</Text>
-                </div>
-              </Card>
-            </motion.div>
+          <Col xs={24} sm={12} lg={8}>
+            <StatCard
+              icon={<BookOutlined />}
+              title="Enrolled Courses"
+              value={enrollmentData.length}
+              color="blue"
+            />
           </Col>
-          
-          <Col xs={24} sm={8}>
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-            >
-              <Card className="text-center">
-                <div className="p-4">
-                  <TrophyOutlined className="text-4xl text-green-600 mb-3" />
-                  <Title level={2} className="mb-1">
-                    {completedCourses.length}
-                  </Title>
-                  <Text type="secondary">Completed</Text>
-                </div>
-              </Card>
-            </motion.div>
+          <Col xs={24} sm={12} lg={8}>
+            <StatCard
+              icon={<TrophyOutlined />}
+              title="Completed Courses"
+              value={completedCourses.length}
+              color="green"
+            />
           </Col>
-          
-          <Col xs={24} sm={8}>
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-            >
-              <Card className="text-center">
-                <div className="p-4">
-                  <ProgressRing
-                    size={80}
-                    progress={getTotalProgress()}
-                    strokeWidth={6}
-                  />
-                  <div className="mt-3">
-                    <Text type="secondary">Overall Progress</Text>
+          <Col xs={24} sm={12} lg={8}>
+            <StatCard
+              icon={<FireOutlined />}
+              title="Points Earned"
+              value="1,200"
+              color="red"
+            />
+          </Col>
+        </Row>
+
+        <Row gutter={[24, 24]}>
+          <Col xs={24} lg={16}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+              <Card className="shadow-md border-0">
+                <div className="flex justify-between items-center mb-4">
+                  <Title level={4} className="mb-0">
+                    Continue Learning
+                  </Title>
+                  <Button type="link" onClick={() => navigate('/courses')}>
+                    View All
+                  </Button>
+                </div>
+                {inProgressCourses.length > 0 ? (
+                  <div className="flex overflow-x-auto space-x-4 pb-4">
+                    {inProgressCourses.map((enrollment) => (
+                      <motion.div key={enrollment._id} className="min-w-[300px]">
+                        <CourseCard
+                          course={enrollment.course}
+                          enrollment={enrollment}
+                          showProgress
+                        />
+                      </motion.div>
+                    ))}
                   </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <BookOutlined className="text-5xl text-gray-300" />
+                    <Text className="block mt-4 text-gray-500">
+                      You have no courses in progress.
+                    </Text>
+                    <Button
+                      type="primary"
+                      className="mt-4"
+                      icon={<PlayCircleOutlined />}
+                      onClick={() => navigate('/courses')}
+                    >
+                      Explore Courses
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            </motion.div>
+            
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+              <Card className="shadow-md border-0">
+                <div className="flex justify-between items-center mb-4">
+                  <Title level={4} className="mb-0">
+                    What's New
+                  </Title>
+                  <Button type="link">See All</Button>
                 </div>
+                <List
+                  itemLayout="horizontal"
+                  dataSource={[{ title: 'New Course: Advanced React Testing', description: 'Master testing with Jest and React Testing Library.' }]}
+                  renderItem={(item) => (
+                    <List.Item>
+                      <List.Item.Meta
+                        avatar={<Avatar icon={<StarOutlined />} />}
+                        title={<a href="#">{item.title}</a>}
+                        description={item.description}
+                      />
+                      <Button type="text" icon={<ArrowRightOutlined />} />
+                    </List.Item>
+                  )}
+                />
+              </Card>
+            </motion.div>
+          </Col>
+
+          <Col xs={24} lg={8}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+              <Card className="shadow-md border-0">
+                <Title level={4} className="mb-4">
+                  Leaderboard
+                </Title>
+                <List
+                  itemLayout="horizontal"
+                  dataSource={leaderboardData}
+                  renderItem={(item, index) => (
+                    <List.Item>
+                      <List.Item.Meta
+                        avatar={item.avatar}
+                        title={<a href="#">{item.name}</a>}
+                        description={`${item.score} points`}
+                      />
+                      <Badge count={`#${index + 1}`} style={{ backgroundColor: '#52c41a' }} />
+                    </List.Item>
+                  )}
+                />
               </Card>
             </motion.div>
           </Col>
         </Row>
-
-        {/* Continue Learning Section */}
-        {inProgressCourses.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
-            className="mb-8"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <Title level={2} className="mb-0">
-                Continue Learning
-              </Title>
-              <Button
-                type="link"
-                onClick={() => navigate('/courses')}
-                icon={<PlayCircleOutlined />}
-              >
-                View All
-              </Button>
-            </div>
-            
-            <Row gutter={[24, 24]}>
-              {inProgressCourses.slice(0, 3).map((enrollment) => (
-                <Col xs={24} md={8} key={enrollment._id}>
-                  <CourseCard
-                    course={enrollment.course}
-                    enrollment={enrollment}
-                    showProgress={true}
-                  />
-                </Col>
-              ))}
-            </Row>
-          </motion.div>
-        )}
-
-        {/* Completed Courses */}
-        {completedCourses.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.5 }}
-            className="mb-8"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <Title level={2} className="mb-0">
-                Completed Courses
-                <Badge
-                  count={completedCourses.length}
-                  style={{ backgroundColor: '#52c41a', marginLeft: 12 }}
-                />
-              </Title>
-              <Button
-                type="link"
-                onClick={() => navigate('/certificates')}
-                icon={<TrophyOutlined />}
-              >
-                View Certificates
-              </Button>
-            </div>
-            
-            <Row gutter={[24, 24]}>
-              {completedCourses.slice(0, 3).map((enrollment) => (
-                <Col xs={24} md={8} key={enrollment._id}>
-                  <CourseCard
-                    course={enrollment.course}
-                    enrollment={enrollment}
-                    showProgress={true}
-                  />
-                </Col>
-              ))}
-            </Row>
-          </motion.div>
-        )}
-
-        {/* Empty State */}
-        {enrollmentData.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
-          >
-            <Card className="text-center py-16">
-              <BookOutlined className="text-6xl text-gray-400 mb-6" />
-              <Title level={3} type="secondary">
-                Start Your Learning Journey
-              </Title>
-              <Text type="secondary" className="text-lg block mb-8">
-                You haven't enrolled in any courses yet. Browse our course catalog to get started.
-              </Text>
-              <Button
-                type="primary"
-                size="large"
-                onClick={() => navigate('/courses')}
-                icon={<PlayCircleOutlined />}
-              >
-                Explore Courses
-              </Button>
-            </Card>
-          </motion.div>
-        )}
       </div>
     </UserLayout>
-  )
-}
+  );
+};
 
-export default Dashboard
+export default Dashboard;

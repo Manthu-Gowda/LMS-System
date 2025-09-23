@@ -1,190 +1,119 @@
-import React from 'react'
-import { useParams } from 'react-router-dom'
-import { Card, Progress, Table, Typography, Tag, Space } from 'antd'
-import { BookOutlined, TrophyOutlined, CheckCircleOutlined } from '@ant-design/icons'
-import { motion } from 'framer-motion'
-import { useQuery } from 'react-query'
+import React from 'react';
+import { useParams } from 'react-router-dom';
+import { Card, Progress, Table, Typography, Tag, Space, Avatar, Row, Col } from 'antd';
+import { BookOutlined, MailOutlined, CalendarOutlined, CheckCircleOutlined, TrophyOutlined } from '@ant-design/icons';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { motion } from 'framer-motion';
+import { useQuery } from 'react-query';
+import AdminLayout from '../../components/Layout/AdminLayout';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { getApi } from '../../utils/apiServices';
+import { GET_USER_PROGRESS } from '../../utils/apiPaths';
 
-import AdminLayout from '../../components/Layout/AdminLayout'
-import LoadingSpinner from '../../components/LoadingSpinner'
-import * as adminAPI from '../../services/admin'
-
-const { Title, Text } = Typography
+const { Title, Text } = Typography;
 
 const UserProgress = () => {
-  const { id } = useParams()
+  const { id } = useParams();
 
   const { data: progressData, isLoading } = useQuery(
     ['user-progress', id],
-    () => adminAPI.getUserProgress(id)
-  )
+    () => getApi(`${GET_USER_PROGRESS}/${id}`)
+  );
 
-  if (isLoading) {
-    return <LoadingSpinner />
-  }
+  if (isLoading) return <LoadingSpinner />;
 
   if (!progressData) {
     return (
-      <AdminLayout>
-        <div className="text-center py-16">
-          <Title level={2}>User not found</Title>
-        </div>
-      </AdminLayout>
-    )
+      <AdminLayout><div className="text-center py-16"><Title level={2}>User not found</Title></div></AdminLayout>
+    );
   }
 
-  const { user, enrollments } = progressData
+  const { user, enrollments } = progressData?.data;
+
+  const chartData = enrollments.map(e => ({ 
+    name: e.course.title.slice(0, 15), 
+    progress: Math.round(((e.progress?.contentCompleted?.length || 0) / e.course.content.length) * 100)
+  }));
 
   const columns = [
-    {
-      title: 'Course',
-      dataIndex: 'course',
-      key: 'course',
-      render: (course) => (
-        <div>
-          <div className="font-medium">{course.title}</div>
-          <div className="text-gray-500 text-sm">{course.difficulty}</div>
+    { 
+      title: 'Course', 
+      dataIndex: ['course', 'title'],
+      render: (title, r) => (
+        <div className="flex items-center">
+          <Avatar shape="square" src={r.course.thumbnail} />
+          <span className="ml-3 font-medium">{title}</span>
         </div>
-      ),
+      )
     },
-    {
-      title: 'Progress',
-      key: 'progress',
-      render: (_, enrollment) => {
-        const total = enrollment.course.content?.length || 1
-        const completed = enrollment.progress?.contentCompleted?.length || 0
-        const percent = Math.round((completed / total) * 100)
-        
-        return (
-          <div>
-            <Progress percent={percent} size="small" />
-            <Text type="secondary" className="text-xs">
-              {completed} / {total} lessons completed
-            </Text>
-          </div>
-        )
-      },
+    { 
+      title: 'Progress', 
+      dataIndex: 'progress',
+      render: (_, r) => <Progress percent={Math.round(((r.progress?.contentCompleted?.length || 0) / r.course.content.length) * 100)} />
     },
-    {
-      title: 'MCQ Score',
-      dataIndex: 'mcqScore',
-      key: 'mcqScore',
-      render: (score) => (
-        score !== null ? (
-          <Tag color={score >= 70 ? 'success' : 'warning'}>
-            {score}%
-          </Tag>
-        ) : (
-          <Tag color="default">Not taken</Tag>
-        )
-      ),
+    { 
+      title: 'Status', 
+      dataIndex: 'isCompleted', 
+      align: 'center', 
+      render: (isCompleted) => <Tag color={isCompleted ? 'green' : 'blue'}>{isCompleted ? 'Completed' : 'In Progress'}</Tag> 
     },
-    {
-      title: 'Assignment',
-      key: 'assignment',
-      render: (_, enrollment) => (
-        enrollment.assignment ? (
-          <Tag color="success" icon={<CheckCircleOutlined />}>
-            Submitted
-          </Tag>
-        ) : (
-          <Tag color="default">Pending</Tag>
-        )
-      ),
+    { 
+      title: 'Certificate', 
+      dataIndex: 'certificateId', 
+      align: 'center',
+      render: (cert) => cert ? <Tag icon={<TrophyOutlined />} color="gold">Issued</Tag> : <Tag>None</Tag>
     },
-    {
-      title: 'Certificate',
-      dataIndex: 'certificateId',
-      key: 'certificateId',
-      render: (certificateId) => (
-        certificateId ? (
-          <Tag color="gold" icon={<TrophyOutlined />}>
-            Issued
-          </Tag>
-        ) : (
-          <Tag color="default">Not issued</Tag>
-        )
-      ),
-    },
-    {
-      title: 'Enrolled',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (date) => new Date(date).toLocaleDateString(),
-    },
-  ]
+  ];
 
   return (
     <AdminLayout>
-      <div className="max-w-6xl mx-auto">
-        {/* User Info */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-8"
-        >
-          <Card>
-            <div className="flex items-center space-x-6">
-              <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-2xl font-bold text-white">
-                  {user.name.charAt(0)}
-                </span>
-              </div>
-              
-              <div className="flex-1">
-                <Title level={2} className="mb-1">
-                  {user.name}
-                </Title>
-                <Text type="secondary" className="text-lg">
-                  {user.email}
-                </Text>
-                
-                <div className="mt-4">
-                  <Space size="large">
-                    <div>
-                      <div className="text-2xl font-bold text-blue-600">
-                        {enrollments.length}
-                      </div>
-                      <div className="text-gray-500">Total Enrollments</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-green-600">
-                        {enrollments.filter(e => e.isCompleted).length}
-                      </div>
-                      <div className="text-gray-500">Completed</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-yellow-600">
-                        {enrollments.filter(e => e.certificateId).length}
-                      </div>
-                      <div className="text-gray-500">Certificates</div>
-                    </div>
-                  </Space>
-                </div>
-              </div>
-            </div>
+      <div className="max-w-7xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="shadow-lg border-0 mb-8">
+            <Row align="middle">
+              <Col xs={24} sm={6} className="text-center">
+                <Avatar size={96} src={`https://i.pravatar.cc/150?u=${user._id}`} />
+              </Col>
+              <Col xs={24} sm={18}>
+                <Title level={2} className="mb-1">{user.name}</Title>
+                <Space direction="vertical">
+                  <Text><MailOutlined className="mr-2"/>{user.email}</Text>
+                  <Text><CalendarOutlined className="mr-2"/>Joined on {new Date(user.createdAt).toLocaleDateString()}</Text>
+                </Space>
+              </Col>
+            </Row>
           </Card>
         </motion.div>
 
-        {/* Progress Table */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-        >
-          <Card title="Course Progress">
-            <Table
-              columns={columns}
-              dataSource={enrollments}
-              rowKey="_id"
-              pagination={false}
-            />
-          </Card>
-        </motion.div>
+        <Row gutter={[24, 24]} className="mb-8">
+          <Col span={8}><Card><Statistic title="Total Enrollments" value={enrollments.length} prefix={<BookOutlined />} /></Card></Col>
+          <Col span={8}><Card><Statistic title="Completed Courses" value={enrollments.filter(e => e.isCompleted).length} prefix={<CheckCircleOutlined />} /></Card></Col>
+          <Col span={8}><Card><Statistic title="Certificates Earned" value={enrollments.filter(e => e.certificateId).length} prefix={<TrophyOutlined />} /></Card></Col>
+        </Row>
+        
+        <Row gutter={[24, 24]}>
+          <Col xs={24} lg={12}>
+            <Card title="Enrollment Progress" className="shadow-md border-0 h-full">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis type="category" dataKey="name" width={80}/>
+                  <Tooltip />
+                  <Bar dataKey="progress" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+          </Col>
+          <Col xs={24} lg={12}>
+            <Card title="Course Details" className="shadow-md border-0 h-full">
+              <Table columns={columns} dataSource={enrollments} rowKey="_id" pagination={false} />
+            </Card>
+          </Col>
+        </Row>
       </div>
     </AdminLayout>
-  )
-}
+  );
+};
 
-export default UserProgress
+export default UserProgress;

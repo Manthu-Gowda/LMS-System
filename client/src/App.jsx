@@ -25,8 +25,7 @@ import Certificates from './pages/user/Certificates'
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard'
 import AdminCourses from './pages/admin/Courses'
-import CreateCourse from './pages/admin/CreateCourse'
-import EditCourse from './pages/admin/EditCourse'
+import CourseForm from './pages/admin/CourseForm'
 import UserProgress from './pages/admin/UserProgress'
 
 const { Content } = Layout
@@ -132,7 +131,7 @@ function AppRoutes() {
               path="/admin/courses/new"
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <CreateCourse />
+                  <CourseForm />
                 </ProtectedRoute>
               }
             />
@@ -140,7 +139,7 @@ function AppRoutes() {
               path="/admin/courses/:id/edit"
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <EditCourse />
+                  <CourseForm />
                 </ProtectedRoute>
               }
             />

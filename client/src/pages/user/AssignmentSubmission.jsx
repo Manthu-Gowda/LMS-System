@@ -6,7 +6,8 @@ import { motion } from 'framer-motion'
 import { useMutation, useQueryClient } from 'react-query'
 
 import UserLayout from '../../components/Layout/UserLayout'
-import * as courseAPI from '../../services/courses'
+import { postApi } from '../../utils/apiServices'
+import { SUBMIT_ASSIGNMENT } from '../../utils/apiPaths'
 
 const { Title, Text, Paragraph } = Typography
 const { TextArea } = Input
@@ -19,11 +20,7 @@ const AssignmentSubmission = () => {
   const [fileList, setFileList] = useState([])
 
   const submitMutation = useMutation(
-    (formData) => {
-      // Get the course ID from the URL or state
-      // For now, we'll need to fetch it from the enrollments
-      return courseAPI.submitAssignment(slug, formData)
-    },
+    (formData) => postApi(`${SUBMIT_ASSIGNMENT}/${slug}/assignment`, formData),
     {
       onSuccess: () => {
         message.success('Assignment submitted successfully!')
@@ -31,7 +28,7 @@ const AssignmentSubmission = () => {
         navigate(`/courses/${slug}`)
       },
       onError: (error) => {
-        message.error(error.response?.data?.message || 'Failed to submit assignment')
+        message.error(error.message || 'Failed to submit assignment')
       },
     }
   )

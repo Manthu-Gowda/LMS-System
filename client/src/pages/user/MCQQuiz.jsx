@@ -7,7 +7,8 @@ import { useQuery, useMutation, useQueryClient } from 'react-query'
 
 import UserLayout from '../../components/Layout/UserLayout'
 import LoadingSpinner from '../../components/LoadingSpinner'
-import * as courseAPI from '../../services/courses'
+import { getApi, postApi } from '../../utils/apiServices'
+import { GET_COURSE_BY_ID, GET_MCQ_BY_COURSE_ID, SUBMIT_MCQ } from '../../utils/apiPaths'
 
 const { Title, Text } = Typography
 
@@ -24,19 +25,19 @@ const MCQQuiz = () => {
 
   const { data: courseData, isLoading } = useQuery(
     ['course', slug],
-    () => courseAPI.getCourseBySlug(slug)
+    () => getApi(`${GET_COURSE_BY_ID}/${slug}`)
   )
 
   const { data: mcqData, isLoading: mcqLoading } = useQuery(
     ['mcq', courseData?.data?._id],
-    () => courseAPI.getMCQByCourseId(courseData.data._id),
+    () => getApi(`${GET_MCQ_BY_COURSE_ID}/course/${courseData.data._id}`),
     {
       enabled: !!courseData?.data?._id,
     }
   )
 
   const submitMutation = useMutation(
-    (answers) => courseAPI.submitMCQ(courseData.data._id, answers),
+    (answers) => postApi(`${SUBMIT_MCQ}/${courseData.data._id}/submit`, answers),
     {
       onSuccess: (response) => {
         setResults(response.data)
@@ -50,7 +51,7 @@ const MCQQuiz = () => {
         }
       },
       onError: (error) => {
-        message.error(error.response?.data?.message || 'Failed to submit quiz')
+        message.error(error.message || 'Failed to submit quiz')
       },
     }
   )

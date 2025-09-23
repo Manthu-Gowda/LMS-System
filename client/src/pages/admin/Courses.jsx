@@ -1,219 +1,144 @@
-import React, { useState } from 'react'
-import { Table, Button, Card, Space, Modal, message, Tag, Image } from 'antd'
-import { 
-  PlusOutlined, 
-  EditOutlined, 
-  DeleteOutlined, 
-  EyeOutlined 
-} from '@ant-design/icons'
-import { motion } from 'framer-motion'
-import { useQuery, useMutation, useQueryClient } from 'react-query'
-import { useNavigate } from 'react-router-dom'
+import React, { useState } from 'react';
+import { Table, Button, Card, Space, Modal, message, Tag, Input, Select, Avatar, Popconfirm } from 'antd';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  SearchOutlined,
+  CloudUploadOutlined,
+  CloudDownloadOutlined
+} from '@ant-design/icons';
+import { motion } from 'framer-motion';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useNavigate } from 'react-router-dom';
+import AdminLayout from '../../components/Layout/AdminLayout';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { getApi, deleteApi, putApi } from '../../utils/apiServices';
+import { GET_COURSES, DELETE_COURSE, UPDATE_COURSE } from '../../utils/apiPaths';
 
-import AdminLayout from '../../components/Layout/AdminLayout'
-import LoadingSpinner from '../../components/LoadingSpinner'
-import * as courseAPI from '../../services/courses'
+const { Option } = Select;
 
 const AdminCourses = () => {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [deleteModal, setDeleteModal] = useState({ visible: false, course: null })
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [filters, setFilters] = useState({ search: '', status: null });
 
-  const { data: coursesData, isLoading } = useQuery(
-    'admin-courses',
-    () => courseAPI.getCourses()
-  )
+  const { data: coursesData, isLoading } = useQuery('admin-courses', () => getApi(GET_COURSES));
 
-  const deleteMutation = useMutation(
-    courseAPI.deleteCourse,
+  const mutation = useMutation(
+    ({ id, data }) => putApi(`${UPDATE_COURSE}/${id}`, data),
     {
       onSuccess: () => {
-        message.success('Course deleted successfully')
-        queryClient.invalidateQueries('admin-courses')
-        setDeleteModal({ visible: false, course: null })
+        queryClient.invalidateQueries('admin-courses');
+        message.success('Course updated!');
       },
-      onError: (error) => {
-        message.error(error.response?.data?.message || 'Failed to delete course')
+      onError: (err) => message.error(err.message),
+    }
+  );
+
+  const deleteMutation = useMutation(
+    (id) => deleteApi(`${DELETE_COURSE}/${id}`),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('admin-courses');
+        message.success('Course deleted!');
       },
+      onError: (err) => message.error(err.message),
     }
-  )
+  );
 
-  const handleDelete = (course) => {
-    setDeleteModal({ visible: true, course })
-  }
+  if (isLoading) return <LoadingSpinner />;
 
-  const confirmDelete = () => {
-    if (deleteModal.course) {
-      deleteMutation.mutate(deleteModal.course._id)
-    }
-  }
+  const courses = coursesData?.data || [];
 
-  if (isLoading) {
-    return <LoadingSpinner />
-  }
-
-  const courses = coursesData || []
+  const filteredCourses = courses.filter(c => 
+    (c.title.toLowerCase().includes(filters.search.toLowerCase()) || c.slug.toLowerCase().includes(filters.search.toLowerCase())) &&
+    (filters.status === null || c.isPublished === filters.status)
+  );
 
   const columns = [
-    {
+    { 
       title: 'Course',
-      key: 'course',
-      render: (_, course) => (
-        <div className="flex items-center space-x-3">
-          <div className="w-16 h-12 bg-gradient-to-r from-blue-400 to-purple-500 rounded flex items-center justify-center">
-            <span className="text-white font-bold">
-              {course.title.charAt(0)}
-            </span>
-          </div>
+      dataIndex: 'title',
+      render: (title, r) => (
+        <div className="flex items-center">
+          <Avatar shape="square" size={48} src={r.thumbnail || 'https://picsum.photos/200'} className="mr-3" />
           <div>
-            <div className="font-medium">{course.title}</div>
-            <div className="text-gray-500 text-sm">{course.slug}</div>
+            <div className="font-medium">{title}</div>
+            <div className="text-sm text-gray-500">{r.slug}</div>
           </div>
         </div>
-      ),
+      )
     },
-    {
-      title: 'Description',
-      dataIndex: 'shortDescription',
-      key: 'shortDescription',
-      render: (text) => (
-        <div className="max-w-xs">
-          {text?.length > 100 ? `${text.substring(0, 100)}...` : text}
-        </div>
-      ),
-    },
-    {
-      title: 'Difficulty',
-      dataIndex: 'difficulty',
-      key: 'difficulty',
-      render: (difficulty) => {
-        const colors = {
-          beginner: 'green',
-          intermediate: 'orange',
-          advanced: 'red'
-        }
-        return <Tag color={colors[difficulty]}>{difficulty}</Tag>
-      },
-    },
-    {
-      title: 'Content',
-      key: 'content',
-      render: (_, course) => (
-        <span>{course.content?.length || 0} items</span>
-      ),
-    },
-    {
+    { 
       title: 'Status',
       dataIndex: 'isPublished',
-      key: 'isPublished',
-      render: (isPublished) => (
-        <Tag color={isPublished ? 'success' : 'default'}>
-          {isPublished ? 'Published' : 'Draft'}
-        </Tag>
-      ),
+      align: 'center',
+      render: (isPublished) => <Tag color={isPublished ? 'success' : 'warning'}>{isPublished ? 'Published' : 'Draft'}</Tag>
     },
-    {
-      title: 'Created',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (date) => new Date(date).toLocaleDateString(),
-    },
+    { title: 'Enrollments', dataIndex: 'enrollmentCount', align: 'center' },
+    { title: 'Created At', dataIndex: 'createdAt', render: (date) => new Date(date).toLocaleDateString() },
     {
       title: 'Actions',
-      key: 'actions',
-      render: (_, course) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EyeOutlined />}
-            onClick={() => navigate(`/courses/${course.slug}`)}
-          />
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => navigate(`/admin/courses/${course._id}/edit`)}
-          />
-          <Button
-            type="text"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(course)}
-          />
+      align: 'right',
+      render: (_, r) => (
+        <Space>
+          <Button icon={<EyeOutlined />} onClick={() => navigate(`/courses/${r.slug}`)} />
+          <Button icon={<EditOutlined />} onClick={() => navigate(`/admin/courses/${r._id}/edit`)} />
+          <Popconfirm 
+            title={`Are you sure you want to ${r.isPublished ? 'unpublish' : 'publish'} this course?`}
+            onConfirm={() => mutation.mutate({ id: r._id, data: { isPublished: !r.isPublished } })}
+          >
+            <Button icon={r.isPublished ? <CloudDownloadOutlined /> : <CloudUploadOutlined />} />
+          </Popconfirm>
+          <Popconfirm title="Are you sure you want to delete this course?" onConfirm={() => deleteMutation.mutate(r._id)}>
+            <Button icon={<DeleteOutlined />} danger />
+          </Popconfirm>
         </Space>
-      ),
-    },
-  ]
+      )
+    }
+  ];
 
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="flex items-center justify-between mb-8"
-        >
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Course Management</h1>
-            <p className="text-gray-600 text-lg">
-              Create, edit, and manage your courses
-            </p>
+            <h1 className="text-3xl font-bold">Course Management</h1>
+            <p className="text-gray-600">Manage all courses in the platform.</p>
           </div>
-          
-          <Button
-            type="primary"
-            size="large"
-            icon={<PlusOutlined />}
-            onClick={() => navigate('/admin/courses/new')}
-          >
-            Create Course
+          <Button type="primary" icon={<PlusOutlined />} size="large" onClick={() => navigate('/admin/courses/new')}>
+            New Course
           </Button>
         </motion.div>
 
-        {/* Courses Table */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-        >
-          <Card>
-            <Table
-              columns={columns}
-              dataSource={courses}
-              rowKey="_id"
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: true,
-                showQuickJumper: true,
-                showTotal: (total, range) =>
-                  `${range[0]}-${range[1]} of ${total} courses`,
-              }}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="shadow-md border-0">
+            <div className="flex justify-between mb-4">
+              <Input 
+                placeholder="Search courses..."
+                prefix={<SearchOutlined />}
+                onChange={e => setFilters({ ...filters, search: e.target.value })}
+                className="max-w-xs"
+              />
+              <Select defaultValue={null} onChange={value => setFilters({ ...filters, status: value })} className="w-40">
+                <Option value={null}>All Statuses</Option>
+                <Option value={true}>Published</Option>
+                <Option value={false}>Draft</Option>
+              </Select>
+            </div>
+            <Table 
+              columns={columns} 
+              dataSource={filteredCourses} 
+              rowKey="_id" 
+              pagination={{ pageSize: 10, showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}` }}
             />
           </Card>
         </motion.div>
-
-        {/* Delete Modal */}
-        <Modal
-          title="Delete Course"
-          open={deleteModal.visible}
-          onOk={confirmDelete}
-          onCancel={() => setDeleteModal({ visible: false, course: null })}
-          confirmLoading={deleteMutation.isLoading}
-          okType="danger"
-          okText="Delete"
-        >
-          <p>
-            Are you sure you want to delete the course{' '}
-            <strong>"{deleteModal.course?.title}"</strong>?
-          </p>
-          <p className="text-red-500">
-            This action cannot be undone and will affect all enrolled students.
-          </p>
-        </Modal>
       </div>
     </AdminLayout>
-  )
-}
+  );
+};
 
-export default AdminCourses
+export default AdminCourses;

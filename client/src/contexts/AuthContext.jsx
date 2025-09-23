@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { message } from 'antd';
+import { postApi } from '../utils/apiServices';
+import { FORGOT_PASSWORD, RESET_PASSWORD } from '../utils/apiPaths';
 
 const AuthContext = createContext({});
 
@@ -22,7 +24,6 @@ export const AuthProvider = ({ children }) => {
     if (token && storedUser) {
       setUser(JSON.parse(storedUser));
     } else if (token) {
-      // If user data is not in local storage, try to decode from token
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         if (payload.exp * 1000 > Date.now()) {
@@ -63,11 +64,44 @@ export const AuthProvider = ({ children }) => {
     message.success('Logged out successfully');
   };
 
+  const forgotPassword = async (email) => {
+    try {
+      const response = await postApi(FORGOT_PASSWORD, { email });
+      if (response.success) {
+        message.success(response.message);
+      } else {
+        message.error(response.message || 'Failed to send reset link');
+      }
+      return response;
+    } catch (error) {
+      message.error(error.message || 'An unexpected error occurred');
+      throw error;
+    }
+  };
+
+  const resetPassword = async (token, newPassword) => {
+    try {
+      const response = await postApi(RESET_PASSWORD, { token, newPassword });
+      if (response.success) {
+        message.success(response.message);
+        navigate('/');
+      } else {
+        message.error(response.message || 'Failed to reset password');
+      }
+      return response;
+    } catch (error) {
+      message.error(error.message || 'An unexpected error occurred');
+      throw error;
+    }
+  };
+
   const value = {
     user,
     token,
     login,
     logout,
+    forgotPassword,
+    resetPassword,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
     isUser: user?.role === 'user'

@@ -1,24 +1,30 @@
-import React from 'react'
-import { Layout, Menu, Avatar, Dropdown, Button } from 'antd'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import React, { useState } from 'react';
+import { Layout, Menu, Avatar, Dropdown, Input, Badge } from 'antd';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   DashboardOutlined,
   BookOutlined,
   TrophyOutlined,
   UserOutlined,
   LogoutOutlined,
-  MenuOutlined
-} from '@ant-design/icons'
-import { motion } from 'framer-motion'
-import { useAuth } from '../../contexts/AuthContext'
+  MenuOutlined,
+  BellOutlined,
+  SearchOutlined,
+} from '@ant-design/icons';
+import { motion } from 'framer-motion';
+import { useAuth } from '../../contexts/AuthContext';
+import useBreakpoint from 'antd/lib/grid/hooks/useBreakpoint';
 
-const { Header, Sider, Content } = Layout
+const { Header, Sider, Content } = Layout;
 
 const UserLayout = ({ children }) => {
-  const { user, logout } = useAuth()
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [collapsed, setCollapsed] = React.useState(false)
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
+  const screens = useBreakpoint();
+
+  const isMobile = !screens.md;
 
   const menuItems = [
     {
@@ -36,7 +42,7 @@ const UserLayout = ({ children }) => {
       icon: <TrophyOutlined />,
       label: <Link to="/certificates">Certificates</Link>,
     },
-  ]
+  ];
 
   const userMenu = {
     items: [
@@ -44,9 +50,13 @@ const UserLayout = ({ children }) => {
         key: 'profile',
         icon: <UserOutlined />,
         label: 'Profile',
-        onClick: () => {
-          // Navigate to profile page when implemented
-        },
+        onClick: () => navigate('/profile'), // Placeholder
+      },
+      {
+        key: 'settings',
+        icon: <UserOutlined />,
+        label: 'Settings',
+        onClick: () => navigate('/settings'), // Placeholder
       },
       {
         type: 'divider',
@@ -58,28 +68,26 @@ const UserLayout = ({ children }) => {
         onClick: logout,
       },
     ],
-  }
+  };
 
   return (
-    <Layout className="min-h-screen">
+    <Layout className="min-h-screen bg-gray-50">
       <Sider
-        trigger={null}
         collapsible
         collapsed={collapsed}
+        onCollapse={setCollapsed}
+        trigger={null}
+        breakpoint="md"
+        collapsedWidth={isMobile ? 0 : 80}
         theme="light"
         width={256}
+        className="shadow-md"
       >
-        <div className="p-4">
-          <motion.div
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
-            className="flex items-center justify-center"
-          >
-            {collapsed ? (
-              <div className="text-xl font-bold text-primary">L</div>
-            ) : (
-              <div className="text-xl font-bold text-primary">LMS</div>
-            )}
+        <div className="flex items-center justify-center p-4">
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+            <div className="text-2xl font-bold text-primary">
+              {collapsed ? "L" : "LMS"}
+            </div>
           </motion.div>
         </div>
         <Menu
@@ -92,31 +100,46 @@ const UserLayout = ({ children }) => {
 
       <Layout>
         <Header className="bg-white shadow-sm px-4 flex items-center justify-between">
-          <Button
-            type="text"
-            icon={<MenuOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            className="flex items-center justify-center"
-          />
-
-          <div className="flex items-center space-x-4">
-            <span className="hidden sm:inline text-gray-600">
-              Welcome back, {user?.name}!
-            </span>
-            <Dropdown menu={userMenu} placement="bottomRight">
-              <Avatar
-                className="cursor-pointer"
-                icon={<UserOutlined />}
-                style={{ backgroundColor: '#1890ff' }}
+          <div className="flex items-center">
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="text-gray-600 hover:text-primary focus:outline-none"
+            >
+              <MenuOutlined className="text-xl" />
+            </button>
+            {!isMobile && (
+              <Input
+                prefix={<SearchOutlined className="text-gray-400" />}
+                placeholder="Search courses..."
+                className="ml-4 w-64"
+                variant="filled"
               />
+            )}
+          </div>
+
+          <div className="flex items-center space-x-6">
+            <Badge count={5} size="small">
+              <BellOutlined className="text-xl text-gray-600" />
+            </Badge>
+            <Dropdown menu={userMenu} placement="bottomRight">
+              <div className="flex items-center cursor-pointer">
+                <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
+                {!isMobile && (
+                  <span className="ml-2 text-sm font-medium text-gray-700">
+                    {user?.name}
+                  </span>
+                )}
+              </div>
             </Dropdown>
           </div>
         </Header>
 
-        <Content className="p-6 bg-gray-50">
+        <Content className="p-4 sm:p-6 lg:p-8">
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            key={location.pathname}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
             {children}
@@ -124,7 +147,7 @@ const UserLayout = ({ children }) => {
         </Content>
       </Layout>
     </Layout>
-  )
-}
+  );
+};
 
-export default UserLayout
+export default UserLayout;

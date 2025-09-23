@@ -3,8 +3,8 @@ import { Form, Input, Button, Card, Typography } from 'antd'
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { postApi } from '../../services/api'
-import { USER_REGISTER } from '../../utils/apiPath'
+import { postApi } from '../../utils/apiServices'
+import { USER_REGISTER } from '../../utils/apiPaths'
 import { message } from 'antd'
 
 const { Title, Text } = Typography
@@ -19,7 +19,7 @@ const Register = () => {
     
     try {
       const response = await postApi(USER_REGISTER, payload)
-      if (response.statusCode === 201) {
+      if (response.success) {
         message.success(response.message)
         navigate('/')
       } else {

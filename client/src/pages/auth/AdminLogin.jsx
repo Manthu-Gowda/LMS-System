@@ -4,8 +4,8 @@ import { LockOutlined, MailOutlined, CrownOutlined } from '@ant-design/icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../../contexts/AuthContext'
-import { postApi } from '../../services/api'
-import { USER_LOGIN } from '../../utils/apiPath'
+import { postApi } from '../../utils/apiServices'
+import { USER_LOGIN } from '../../utils/apiPaths'
 import { message } from 'antd'
 
 const { Title, Text } = Typography
@@ -25,7 +25,7 @@ const AdminLogin = () => {
     
     try {
       const response = await postApi(USER_LOGIN, payload)
-      if (response.statusCode === 200) {
+      if (response.success) {
         const { accessTokenResponseModel, user } = response.data
         const loginData = {
           accessToken: accessTokenResponseModel.accessToken,

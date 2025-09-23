@@ -1,23 +1,30 @@
-import React from 'react'
-import { Layout, Menu, Avatar, Dropdown, Button } from 'antd'
-import { Link, useLocation } from 'react-router-dom'
+import React, { useState } from 'react';
+import { Layout, Menu, Avatar, Dropdown, Input, Badge } from 'antd';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   DashboardOutlined,
   BookOutlined,
   UserOutlined,
   LogoutOutlined,
   MenuOutlined,
-  SettingOutlined
-} from '@ant-design/icons'
-import { motion } from 'framer-motion'
-import { useAuth } from '../../contexts/AuthContext'
+  BellOutlined,
+  SearchOutlined,
+  SettingOutlined,
+} from '@ant-design/icons';
+import { motion } from 'framer-motion';
+import { useAuth } from '../../contexts/AuthContext';
+import useBreakpoint from 'antd/lib/grid/hooks/useBreakpoint';
 
-const { Header, Sider, Content } = Layout
+const { Header, Sider, Content } = Layout;
 
 const AdminLayout = ({ children }) => {
-  const { user, logout } = useAuth()
-  const location = useLocation()
-  const [collapsed, setCollapsed] = React.useState(false)
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
+  const screens = useBreakpoint();
+
+  const isMobile = !screens.md;
 
   const menuItems = [
     {
@@ -30,7 +37,12 @@ const AdminLayout = ({ children }) => {
       icon: <BookOutlined />,
       label: <Link to="/admin/courses">Courses</Link>,
     },
-  ]
+    {
+        key: '/admin/users',
+        icon: <UserOutlined />,
+        label: <Link to="/admin/users">Users</Link>,
+    },
+  ];
 
   const userMenu = {
     items: [
@@ -38,9 +50,7 @@ const AdminLayout = ({ children }) => {
         key: 'settings',
         icon: <SettingOutlined />,
         label: 'Settings',
-        onClick: () => {
-          // Navigate to settings page when implemented
-        },
+        onClick: () => navigate('/admin/settings'), // Placeholder
       },
       {
         type: 'divider',
@@ -52,65 +62,78 @@ const AdminLayout = ({ children }) => {
         onClick: logout,
       },
     ],
-  }
+  };
 
   return (
-    <Layout className="min-h-screen">
+    <Layout className="min-h-screen bg-gray-50">
       <Sider
-        trigger={null}
         collapsible
         collapsed={collapsed}
-        theme="dark"
+        onCollapse={setCollapsed}
+        trigger={null}
+        breakpoint="md"
+        collapsedWidth={isMobile ? 0 : 80}
+        theme="light"
         width={256}
+        className="shadow-md"
       >
-        <div className="p-4">
-          <motion.div
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
-            className="flex items-center justify-center"
-          >
-            {collapsed ? (
-              <div className="text-xl font-bold text-white">A</div>
-            ) : (
-              <div className="text-xl font-bold text-white">Admin Panel</div>
-            )}
+        <div className="flex items-center justify-center p-4">
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+            <div className="text-2xl font-bold text-primary">
+              {collapsed ? "A" : "Admin"}
+            </div>
           </motion.div>
         </div>
         <Menu
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
-          theme="dark"
+          className="border-r-0"
         />
       </Sider>
 
       <Layout>
         <Header className="bg-white shadow-sm px-4 flex items-center justify-between">
-          <Button
-            type="text"
-            icon={<MenuOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            className="flex items-center justify-center"
-          />
-
-          <div className="flex items-center space-x-4">
-            <span className="hidden sm:inline text-gray-600">
-              Admin: {user?.name}
-            </span>
-            <Dropdown menu={userMenu} placement="bottomRight">
-              <Avatar
-                className="cursor-pointer"
-                icon={<UserOutlined />}
-                style={{ backgroundColor: '#722ed1' }}
+          <div className="flex items-center">
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="text-gray-600 hover:text-primary focus:outline-none"
+            >
+              <MenuOutlined className="text-xl" />
+            </button>
+            {!isMobile && (
+              <Input
+                prefix={<SearchOutlined className="text-gray-400" />}
+                placeholder="Search..."
+                className="ml-4 w-64"
+                variant="filled"
               />
+            )}
+          </div>
+
+          <div className="flex items-center space-x-6">
+            <Badge count={2} size="small">
+              <BellOutlined className="text-xl text-gray-600" />
+            </Badge>
+            <Dropdown menu={userMenu} placement="bottomRight">
+              <div className="flex items-center cursor-pointer">
+                <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#722ed1' }} />
+                {!isMobile && (
+                  <span className="ml-2 text-sm font-medium text-gray-700">
+                    {user?.name}
+                  </span>
+                )}
+              </div>
             </Dropdown>
           </div>
         </Header>
 
-        <Content className="p-6 bg-gray-50">
+        <Content className="p-4 sm:p-6 lg:p-8">
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            key={location.pathname}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
             {children}
@@ -118,7 +141,7 @@ const AdminLayout = ({ children }) => {
         </Content>
       </Layout>
     </Layout>
-  )
-}
+  );
+};
 
-export default AdminLayout
+export default AdminLayout;
